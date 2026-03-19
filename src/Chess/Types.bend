@@ -1,12 +1,10 @@
-# Chess core shared types.
+# Chess shared types.
 
-# Piece side.
 type Color {
   white{}
   black{}
 }
 
-# Piece kind.
 type PieceKind {
   king{}
   queen{}
@@ -16,35 +14,70 @@ type PieceKind {
   pawn{}
 }
 
-# One piece on board.
 type Piece {
   piece{color: Color, kind: PieceKind}
 }
 
-# Board coordinate.
 type Pos {
   pos{row: U32, col: U32}
 }
 
-# One move from -> to.
 type Move {
   move{from: Pos, to: Pos}
 }
 
-# Game outcome.
 type Outcome {
   playing{}
   checkmate{winner: Color}
   stalemate{}
 }
 
-# Future player source for each side.
 type Controller {
   human{}
   bot{}
 }
 
-# Full game state used by app + engine + bot.
+type Screen {
+  menu_screen{}
+  match_screen{}
+}
+
+type EffectTarget {
+  target_player{}
+  target_opponent{}
+  target_both{}
+}
+
+type Passive {
+  pawn_first_move_max{target: EffectTarget, max_steps: U32}
+}
+
+type QueenId {
+  queen_default{}
+  queen_plus{}
+  queen_minus{}
+}
+
+type QueenDef {
+  queen_def{id: QueenId, name: String, passive: Passive}
+}
+
+type Inventory {
+  inventory{
+    selected: QueenId,
+    unlocked_default: U32,
+    unlocked_plus: U32,
+    unlocked_minus: U32,
+  }
+}
+
+type RuleSet {
+  ruleset{
+    player_pawn_first_max: U32,
+    opponent_pawn_first_max: U32,
+  }
+}
+
 type GameState {
   game{
     board: List(Maybe(Piece)),
@@ -57,5 +90,16 @@ type GameState {
     seed: U32,
     white_ctrl: Controller,
     black_ctrl: Controller,
+  }
+}
+
+type RootState {
+  root{
+    screen: Screen,
+    queen_popup_open: U32,
+    inventory: Inventory,
+    rules: RuleSet,
+    game_state: GameState,
+    menu_status: String,
   }
 }

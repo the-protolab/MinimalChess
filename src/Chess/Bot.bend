@@ -1,7 +1,10 @@
 # Bot policy: intentionally weak random legal move chooser.
 
-def choose_random_legal_move(state: Chess/Types/GameState) -> Maybe(Chess/Types/Move):
-  moves = Chess/Engine/legal_moves_for_side(state)
+def choose_random_legal_move(
+  rule_set: Chess/Types/RuleSet,
+  state: Chess/Types/GameState,
+) -> Maybe(Chess/Types/Move):
+  moves = Chess/Engine/legal_moves_for_side(rule_set, state)
   count = Chess/Engine/list_length(Chess/Types/Move, moves)
   choose_from_count(state, moves, count)
 
