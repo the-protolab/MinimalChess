@@ -1063,6 +1063,10 @@ css_g : String = "
 .cell_target_dot{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(20px,4vw,30px);color:#31586f;line-height:1;pointer-events:none}
 .cell_selected_ring{position:absolute;inset:3px;border:3px solid #1f6fa5;border-radius:8px;pointer-events:none}
 .cell_check_badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:999px;background:#b42318;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;pointer-events:none}
+@media (max-width: 600px){
+  :root{--app-pad:8px;--card-width:100vw;--menu-card-height:100vh;--match-card-height:100vh}
+  .page{padding:var(--app-pad);overflow:auto}
+}
 @media (min-width: 900px){
   .btn_x{position:fixed;top:var(--match-close-top);right:var(--match-close-right);z-index:20;font-family:'Poppins','Trebuchet MS',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(122,31,31,.82)}
   .match_close_mobile{display:none}
