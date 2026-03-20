@@ -382,6 +382,13 @@ def render_menu_title_row(info: String) -> HTML(Event):
     <span class="nav_spacer">{text{""}}</span>
   </div>
 
+def render_queen_stage_nav(cursor: Chess/Types/QueenId) -> HTML(Event):
+  <div class="queen_stage_nav">
+    <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
+    <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
+    <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
+  </div>
+
 def render_passive_block(details: String) -> HTML(Event):
   <div class="passive_block">
     <div class="passive_label">{text{"PASSIVE"}}</div>
@@ -448,12 +455,8 @@ def render_queen_screen_view_hidden(
 ) -> HTML(Event):
   <section class="menu_frame screen_hidden">
     <div class="menu_kicker">{text{"QUEEN"}}</div>
-    <div class="queen_nav">
-      <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
-      <div class="menu_title">{text{info}}</div>
-      <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
-    </div>
-    <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
+    {render_menu_title_row(info)}
+    {render_queen_stage_nav(cursor)}
     {render_passive_block(details)}
     {render_queen_actions(selected)}
   </section>
@@ -466,12 +469,8 @@ def render_queen_screen_view_visible(
 ) -> HTML(Event):
   <section class="menu_frame">
     <div class="menu_kicker">{text{"QUEEN"}}</div>
-    <div class="queen_nav">
-      <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
-      <div class="menu_title">{text{info}}</div>
-      <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
-    </div>
-    <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
+    {render_menu_title_row(info)}
+    {render_queen_stage_nav(cursor)}
     {render_passive_block(details)}
     {render_queen_actions(selected)}
   </section>
@@ -491,26 +490,31 @@ def render_match(
   game: Chess/Types/GameState,
   screen: Chess/Types/Screen,
 ) -> HTML(Event):
-  turn_line = match_turn_line(game)
+  turn_side = match_turn_side(game)
   info_line = match_info_line(game)
   match is_match_screen(screen):
     case 0:
-      render_match_view_hidden(rules, game, turn_line, info_line)
+      render_match_view_hidden(rules, game, turn_side, info_line)
     case _:
-      render_match_view_visible(rules, game, turn_line, info_line)
+      render_match_view_visible(rules, game, turn_side, info_line)
 
 def render_match_view_hidden(
   rules: Chess/Types/RuleSet,
   game: Chess/Types/GameState,
-  turn_line: String,
+  turn_side: String,
   info_line: String,
 ) -> HTML(Event):
   <section class="match_frame screen_hidden">
-    <div class="match_top">
-      <div class="match_turn">{text{turn_line}}</div>
-      <a class="btn_x" href="./">{text{"X"}}</a>
+    <div class="match_header">
+      <div class="match_top">
+        <div class="match_turn">
+          <span class="match_turn_label">{text{"Turn:"}}</span>
+          <span class="match_turn_value">{text{turn_side}}</span>
+        </div>
+        {render_match_close_link()}
+      </div>
+      <div class="match_info">{text{info_line}}</div>
     </div>
-    <div class="match_info">{text{info_line}}</div>
     <div class="match_grid_wrap">
       <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
     </div>
@@ -519,17 +523,28 @@ def render_match_view_hidden(
 def render_match_view_visible(
   rules: Chess/Types/RuleSet,
   game: Chess/Types/GameState,
-  turn_line: String,
+  turn_side: String,
   info_line: String,
 ) -> HTML(Event):
   <section class="match_frame">
-    <div class="match_top">
-      <div class="match_turn">{text{turn_line}}</div>
-      <a class="btn_x" href="./">{text{"X"}}</a>
+    <div class="match_header">
+      <div class="match_top">
+        <div class="match_turn">
+          <span class="match_turn_label">{text{"Turn:"}}</span>
+          <span class="match_turn_value">{text{turn_side}}</span>
+        </div>
+        {render_match_close_link()}
+      </div>
+      <div class="match_info">{text{info_line}}</div>
     </div>
-    <div class="match_info">{text{info_line}}</div>
     {render_match_board_mount(game, rules)}
   </section>
+
+def render_match_close_link() -> HTML(Event):
+  <a class="btn_x" href="./">
+    <span class="match_close_mobile">{text{"X"}}</span>
+    <span class="match_close_desktop">{text{"RESIGN"}}</span>
+  </a>
 
 def render_match_board_mount(
   game: Chess/Types/GameState,
@@ -562,10 +577,10 @@ def render_match_board_odd(
     <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
   </section>
 
-def match_turn_line(state: Chess/Types/GameState) -> String:
+def match_turn_side(state: Chess/Types/GameState) -> String:
   match state:
     case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
-      "Turn: " ++ Chess/Engine/color_name(side)
+      Chess/Engine/color_name(side)
 
 def match_info_line(state: Chess/Types/GameState) -> String:
   match state:
@@ -876,15 +891,25 @@ css_a : String = "
   --menu-action-row:var(--menu-button-height);
   --menu-link-row:44px;
   --menu-actions-gap:5px;
-  --match-top-row:56px;
-  --match-info-row:72px;
+  --menu-actions-top-space:0px;
+  --menu-header-offset-y:10px;
+  --menu-body-offset-y:-10px;
+  --menu-title-offset-y:-8px;
+  --menu-selected-title-size:clamp(38px,7vw,66px);
+  --menu-stage-top-offset-y:-8px;
+  --match-header-gap:1px;
+  --match-board-gap:8px;
+  --match-close-top:18px;
+  --match-close-right:22px;
   --board-gap:2px;
   --board-max-size:calc(var(--card-width) - (2 * var(--card-pad)));
   --board-piece-size:90%;
   --queen-nav-size:52px;
   --queen-nav-gap:8px;
+  --queen-stage-nav-gap:12px;
   --queen-header-gap:2px;
   --queen-stage-size:clamp(210px,40vh,340px);
+  --queen-stage-top-offset-y:-20px;
   --queen-stage-offset-y:40px;
   --queen-bg-size:65%;
   --queen-piece-size:70%;
@@ -912,24 +937,29 @@ body{height:100%;overflow:hidden;background:#FFFADA;color:#111;font-family:var(-
   overflow:hidden;
   grid-template-rows:var(--menu-kicker-row) var(--menu-title-row) var(--queen-stage-size) var(--menu-passive-row) minmax(0,1fr) var(--menu-action-row) var(--menu-link-row);
 }
-.menu_frame_menu{grid-template-rows:var(--menu-kicker-row) var(--menu-title-row) var(--queen-stage-size) var(--menu-passive-row) minmax(0,1fr) auto}
+.menu_frame_menu{grid-template-rows:var(--menu-kicker-row) var(--menu-title-row) var(--queen-stage-size) var(--menu-passive-row) var(--menu-actions-top-space) auto minmax(0,1fr)}
 .match_frame{
   width:var(--card-width);
   height:var(--match-card-height);
   border:var(--card-border);
   padding:var(--card-pad);
+  position:relative;
   display:grid;
-  gap:var(--card-gap);
+  gap:var(--match-board-gap);
   background:transparent;
   overflow:hidden;
-  grid-template-rows:var(--match-top-row) var(--match-info-row) minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr);
 }
 "
 
 css_c : String = "
 .screen_hidden{display:none !important}
+.menu_frame_menu>.menu_kicker{transform:translateY(var(--menu-header-offset-y))}
+.menu_frame_menu>.queen_nav{transform:translateY(calc(var(--menu-header-offset-y) + var(--menu-title-offset-y)))}
+.menu_frame_menu>.queen_sprite_box{transform:translateY(calc(var(--menu-body-offset-y) + var(--menu-stage-top-offset-y)))}
+.menu_frame_menu>.passive_block,.menu_frame_menu>.menu_actions{transform:translateY(var(--menu-body-offset-y))}
 .menu_kicker{height:100%;display:flex;align-items:flex-end;justify-content:center;text-align:center;font-family:var(--micro-label-font);font-size:var(--micro-label-size);font-weight:800;letter-spacing:.02em;color:#BE0F0F}
-.menu_title{text-align:center;font-size:clamp(32px,6vw,58px);line-height:1;font-family:var(--queen-name-font);font-weight:400}
+.menu_title{text-align:center;font-size:var(--menu-selected-title-size);line-height:1;font-family:var(--queen-name-font);font-weight:400}
 .passive_block{height:100%;display:grid;grid-template-rows:auto auto;gap:8px;align-content:start}
 .passive_label{text-align:center;font-family:var(--micro-label-font);font-size:var(--micro-label-size);font-weight:800;letter-spacing:.02em;color:rgba(21,47,81,.72)}
 .passive_text{height:auto;display:grid;place-items:start center;text-align:center;font-size:clamp(14px,2.4vw,18px);font-style:italic;color:rgba(17,17,17,.7);overflow:hidden}
@@ -937,6 +967,7 @@ css_c : String = "
 
 css_d : String = "
 .queen_nav{height:100%;display:grid;grid-template-columns:var(--queen-nav-size) 1fr var(--queen-nav-size);align-items:start;gap:var(--queen-nav-gap);margin-top:calc(var(--queen-header-gap) - var(--card-gap))}
+.queen_stage_nav{width:100%;display:grid;grid-template-columns:var(--queen-nav-size) minmax(0,var(--queen-stage-size)) var(--queen-nav-size);justify-content:center;align-items:center;gap:var(--queen-stage-nav-gap);transform:translateY(var(--queen-stage-top-offset-y))}
 .nav_spacer{width:var(--queen-nav-size);height:var(--queen-nav-size);display:block}
 .btn_nav{width:var(--queen-nav-size);height:var(--queen-nav-size);border:2px solid #111;background:#fff;font-size:30px;line-height:1;cursor:pointer}
 .menu_actions,.queen_actions{grid-row:6;display:grid;justify-items:center;align-content:start;gap:var(--menu-actions-gap)}
@@ -956,10 +987,15 @@ css_e : String = "
 "
 
 css_f : String = "
-.match_top{height:100%;display:flex;justify-content:space-between;align-items:center;gap:10px}
-.match_turn{font-size:clamp(24px,4.2vw,40px);font-weight:800;line-height:1}
-.btn_x{border:none;background:transparent;color:#111;font-size:clamp(34px,5.5vw,54px);font-weight:900;line-height:1;cursor:pointer;padding:0;text-decoration:none;display:inline-block}
-.match_info{height:100%;display:grid;align-content:center;overflow:hidden;font-size:clamp(16px,2.4vw,26px);line-height:1.18}
+.match_header{display:grid;grid-template-rows:auto auto;gap:var(--match-header-gap)}
+.match_top{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.match_turn{display:inline-flex;align-items:center;gap:5px;font-size:clamp(16px,2.8vw,24px);font-weight:700;line-height:1}
+.match_turn_label{color:#403E3E;text-transform:uppercase}
+.match_turn_value{color:#000;text-transform:uppercase}
+.btn_x{border:none;background:transparent;color:#111;font-size:clamp(24px,4vw,34px);font-weight:900;line-height:1;cursor:pointer;padding:0;text-decoration:none;display:inline-block}
+.match_close_mobile{display:inline}
+.match_close_desktop{display:none}
+.match_info{overflow:hidden;font-size:clamp(11px,1.7vw,15px);line-height:1.05}
 .match_grid_wrap{width:100%;height:100%;min-height:0;display:grid;place-items:center;overflow:hidden}
 .board{
   width:100%;
@@ -972,8 +1008,8 @@ css_f : String = "
 }
 .board_row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:var(--board-gap)}
 .cell_light,.cell_dark{width:100%;height:100%;border:none;cursor:pointer;display:grid;place-items:center;position:relative;overflow:hidden;padding:0}
-.cell_light{background:#efe5d3}
-.cell_dark{background:#bba27f}
+.cell_light{background:#A4F28E}
+.cell_dark{background:#82B786}
 "
 
 css_g : String = "
@@ -983,6 +1019,11 @@ css_g : String = "
 .cell_target_dot{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(20px,4vw,30px);color:#31586f;line-height:1;pointer-events:none}
 .cell_selected_ring{position:absolute;inset:3px;border:3px solid #1f6fa5;border-radius:8px;pointer-events:none}
 .cell_check_badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:999px;background:#b42318;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;pointer-events:none}
+@media (min-width: 900px){
+  .btn_x{position:fixed;top:var(--match-close-top);right:var(--match-close-right);z-index:20;font-family:'Poppins','Trebuchet MS',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(122,31,31,.82)}
+  .match_close_mobile{display:none}
+  .match_close_desktop{display:inline}
+}
 "
 
 css : String = css_a ++ css_b ++ css_c ++ css_d ++ css_e ++ css_f ++ css_g
