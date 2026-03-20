@@ -507,9 +507,38 @@ def render_match_view_visible(
       <button class="btn_x" on_click={back_menu{}}>{text{"X"}}</button>
     </div>
     <div class="match_info">{text{info_line}}</div>
-    <div class="match_grid_wrap">
-      <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
-    </div>
+    {render_match_board_mount(game, rules)}
+  </section>
+
+def render_match_board_mount(
+  game: Chess/Types/GameState,
+  rules: Chess/Types/RuleSet,
+) -> HTML(Event):
+  match match_board_toggle(game):
+    case 0:
+      render_match_board_even(game, rules)
+    case _:
+      render_match_board_odd(game, rules)
+
+def match_board_toggle(game: Chess/Types/GameState) -> U32:
+  match game:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      seed & 1
+
+def render_match_board_even(
+  game: Chess/Types/GameState,
+  rules: Chess/Types/RuleSet,
+) -> HTML(Event):
+  <div class="match_grid_wrap">
+    <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
+  </div>
+
+def render_match_board_odd(
+  game: Chess/Types/GameState,
+  rules: Chess/Types/RuleSet,
+) -> HTML(Event):
+  <section class="match_grid_wrap">
+    <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
   </section>
 
 def match_turn_line(state: Chess/Types/GameState) -> String:
