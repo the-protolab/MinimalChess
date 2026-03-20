@@ -382,18 +382,35 @@ def render_menu_title_row(info: String) -> HTML(Event):
     <span class="nav_spacer">{text{""}}</span>
   </div>
 
+def render_passive_block(details: String) -> HTML(Event):
+  <div class="passive_block">
+    <div class="passive_label">{text{"PASSIVE"}}</div>
+    <div class="passive_text">{text{details}}</div>
+  </div>
+
+def render_menu_actions() -> HTML(Event):
+  <div class="menu_actions">
+    <button class="btn_primary btn_play" on_click={start{}}>{text{"PLAY"}}</button>
+    <button class="btn_link btn_change_queen" on_click={open_queen{}}>{text{"change queen"}}</button>
+  </div>
+
+def render_queen_actions(selected: U32) -> HTML(Event):
+  <div class="queen_actions">
+    {render_select_button(selected)}
+    <button class="btn_link btn_change_queen" on_click={back_menu{}}>{text{"back"}}</button>
+  </div>
+
 def render_menu_view_hidden(
   qid: Chess/Types/QueenId,
   info: String,
   details: String,
 ) -> HTML(Event):
-  <section class="menu_frame screen_hidden">
-    <div class="menu_kicker">{text{"SELECTED QUEEN"}}</div>
+  <section class="menu_frame menu_frame_menu screen_hidden">
+    <div class="menu_kicker">{text{"SELECTED QUEEN:"}}</div>
     {render_menu_title_row(info)}
-    <div class="menu_desc">{text{details}}</div>
     <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
-    <button class="btn_primary" on_click={start{}}>{text{"PLAY"}}</button>
-    <button class="btn_link" on_click={open_queen{}}>{text{"change queen"}}</button>
+    {render_passive_block(details)}
+    {render_menu_actions()}
   </section>
 
 def render_menu_view_visible(
@@ -401,13 +418,12 @@ def render_menu_view_visible(
   info: String,
   details: String,
 ) -> HTML(Event):
-  <section class="menu_frame">
-    <div class="menu_kicker">{text{"SELECTED QUEEN"}}</div>
+  <section class="menu_frame menu_frame_menu">
+    <div class="menu_kicker">{text{"SELECTED QUEEN:"}}</div>
     {render_menu_title_row(info)}
-    <div class="menu_desc">{text{details}}</div>
     <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
-    <button class="btn_primary" on_click={start{}}>{text{"PLAY"}}</button>
-    <button class="btn_link" on_click={open_queen{}}>{text{"change queen"}}</button>
+    {render_passive_block(details)}
+    {render_menu_actions()}
   </section>
 
 def render_queen_screen(
@@ -431,16 +447,15 @@ def render_queen_screen_view_hidden(
   details: String,
 ) -> HTML(Event):
   <section class="menu_frame screen_hidden">
-    <div class="menu_kicker">{text{"SELECT QUEEN"}}</div>
+    <div class="menu_kicker">{text{"QUEEN"}}</div>
     <div class="queen_nav">
       <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
       <div class="menu_title">{text{info}}</div>
       <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
     </div>
-    <div class="menu_desc">{text{details}}</div>
     <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
-    {render_select_button(selected)}
-    <button class="btn_back" on_click={back_menu{}}>{text{"back"}}</button>
+    {render_passive_block(details)}
+    {render_queen_actions(selected)}
   </section>
 
 def render_queen_screen_view_visible(
@@ -450,27 +465,26 @@ def render_queen_screen_view_visible(
   details: String,
 ) -> HTML(Event):
   <section class="menu_frame">
-    <div class="menu_kicker">{text{"SELECT QUEEN"}}</div>
+    <div class="menu_kicker">{text{"QUEEN"}}</div>
     <div class="queen_nav">
       <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
       <div class="menu_title">{text{info}}</div>
       <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
     </div>
-    <div class="menu_desc">{text{details}}</div>
     <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
-    {render_select_button(selected)}
-    <button class="btn_back" on_click={back_menu{}}>{text{"back"}}</button>
+    {render_passive_block(details)}
+    {render_queen_actions(selected)}
   </section>
 
 def render_select_button(selected: U32) -> HTML(Event):
   match selected:
     case 0:
-      render_select_button_label("SELECT")
+      render_select_button_label("SELECT", "btn_primary btn_play btn_select_available")
     case _:
-      render_select_button_label("SELECTED")
+      render_select_button_label("SELECTED", "btn_primary btn_play btn_select_current")
 
-def render_select_button_label(label: String) -> HTML(Event):
-  <button class="btn_primary" on_click={select_unlock{}}>{text{label}}</button>
+def render_select_button_label(label: String, classes: String) -> HTML(Event):
+  <button class={classes} on_click={select_unlock{}}>{text{label}}</button>
 
 def render_match(
   rules: Chess/Types/RuleSet,
@@ -584,7 +598,7 @@ def is_match_screen(screen: Chess/Types/Screen) -> U32:
 def queen_wire_name(qid: Chess/Types/QueenId) -> String:
   match qid:
     case queen_default{}:
-      "DEFAULT QUEEN"
+      "DEFAULT"
     case queen_plus{}:
       "QUEEN +"
     case queen_minus{}:
@@ -845,31 +859,46 @@ def queen_passive_text(qid: Chess/Types/QueenId) -> String:
       "Pawn first move: only 1 square."
 
 css_a : String = "
+@import url('https://fonts.googleapis.com/css2?family=Gasoek+One&family=Poppins:wght@500;800;900&display=swap');
 :root{
-  --app-pad:16px;
+  --app-pad:50px;
   --card-width:min(92vw,560px);
   --menu-card-height:min(90vh,760px);
   --match-card-height:min(90vh,760px);
-  --card-border:3px solid #111;
-  --card-pad:22px;
-  --card-gap:12px;
-  --menu-kicker-row:48px;
+  --card-border:none;
+  --card-pad:3px;
+  --card-gap:20px;
+  --menu-kicker-row:24px;
   --menu-title-row:72px;
-  --menu-desc-row:72px;
-  --menu-action-row:64px;
+  --menu-passive-row:92px;
+  --menu-button-width:420px;
+  --menu-button-height:64px;
+  --menu-action-row:var(--menu-button-height);
   --menu-link-row:44px;
+  --menu-actions-gap:5px;
   --match-top-row:56px;
   --match-info-row:72px;
   --board-gap:2px;
   --board-max-size:calc(var(--card-width) - (2 * var(--card-pad)));
+  --board-piece-size:90%;
   --queen-nav-size:52px;
   --queen-nav-gap:8px;
-  --queen-stage-size:clamp(130px,30vh,220px);
-  --queen-piece-size:72%;
+  --queen-header-gap:2px;
+  --queen-stage-size:clamp(210px,40vh,340px);
+  --queen-stage-offset-y:40px;
+  --queen-bg-size:65%;
+  --queen-piece-size:70%;
+  --body-font:'Poppins','Trebuchet MS',sans-serif;
+  --queen-name-font:'Gasoek One','Trebuchet MS',sans-serif;
+  --micro-label-font:'Poppins','Trebuchet MS',sans-serif;
+  --micro-label-size:clamp(12px,1.9vw,15px);
 }
+"
+
+css_b : String = "
 html{height:100%;overflow:hidden}
 *{box-sizing:border-box;margin:0}
-body{height:100%;overflow:hidden;background:#efefef;color:#111;font-family:Trebuchet MS,sans-serif}
+body{height:100%;overflow:hidden;background:#FFFADA;color:#111;font-family:var(--body-font);font-weight:500}
 .page{height:100%;padding:var(--app-pad);display:grid;place-items:center}
 .screen_stack{width:100%;display:grid;place-items:center}
 .menu_frame{
@@ -881,8 +910,9 @@ body{height:100%;overflow:hidden;background:#efefef;color:#111;font-family:Trebu
   gap:var(--card-gap);
   background:transparent;
   overflow:hidden;
-  grid-template-rows:var(--menu-kicker-row) var(--menu-title-row) var(--menu-desc-row) minmax(0,1fr) var(--menu-action-row) var(--menu-link-row);
+  grid-template-rows:var(--menu-kicker-row) var(--menu-title-row) var(--queen-stage-size) var(--menu-passive-row) minmax(0,1fr) var(--menu-action-row) var(--menu-link-row);
 }
+.menu_frame_menu{grid-template-rows:var(--menu-kicker-row) var(--menu-title-row) var(--queen-stage-size) var(--menu-passive-row) minmax(0,1fr) auto}
 .match_frame{
   width:var(--card-width);
   height:var(--match-card-height);
@@ -894,25 +924,38 @@ body{height:100%;overflow:hidden;background:#efefef;color:#111;font-family:Trebu
   overflow:hidden;
   grid-template-rows:var(--match-top-row) var(--match-info-row) minmax(0,1fr);
 }
-.screen_hidden{display:none !important}
-.menu_kicker{height:100%;display:grid;place-items:center;text-align:center;font-size:clamp(22px,4vw,38px);font-weight:800;letter-spacing:.06em}
-.menu_title{text-align:center;font-size:clamp(32px,6vw,58px);line-height:1;font-weight:900}
-.menu_desc{height:100%;display:grid;place-items:center;text-align:center;font-size:clamp(18px,2.8vw,30px);font-style:italic;overflow:hidden}
-"
-
-css_b : String = "
-.queen_nav{height:100%;display:grid;grid-template-columns:var(--queen-nav-size) 1fr var(--queen-nav-size);align-items:center;gap:var(--queen-nav-gap)}
-.nav_spacer{width:var(--queen-nav-size);height:var(--queen-nav-size);display:block}
-.btn_nav{width:var(--queen-nav-size);height:var(--queen-nav-size);border:2px solid #111;background:#fff;font-size:30px;line-height:1;cursor:pointer}
-.queen_sprite_box{width:var(--queen-stage-size);height:var(--queen-stage-size);margin:0 auto;display:grid;place-items:center}
-.queen_sprite{width:var(--queen-piece-size);height:var(--queen-piece-size);max-width:100%;max-height:100%;object-fit:contain;pointer-events:none}
-.btn_primary,.btn_selected{width:min(100%,420px);height:100%;margin:0 auto;border:3px solid #111;background:#fff;font-size:clamp(28px,6vw,44px);font-weight:900;cursor:pointer}
-.btn_selected{color:#4c4c4c;cursor:default}
-.btn_link{height:100%;border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,5.2vw,38px);color:#111;cursor:pointer;display:grid;place-items:center}
-.btn_back{height:100%;border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,5.2vw,38px);color:#111;cursor:pointer;display:grid;place-items:center}
 "
 
 css_c : String = "
+.screen_hidden{display:none !important}
+.menu_kicker{height:100%;display:flex;align-items:flex-end;justify-content:center;text-align:center;font-family:var(--micro-label-font);font-size:var(--micro-label-size);font-weight:800;letter-spacing:.02em;color:#BE0F0F}
+.menu_title{text-align:center;font-size:clamp(32px,6vw,58px);line-height:1;font-family:var(--queen-name-font);font-weight:400}
+.passive_block{height:100%;display:grid;grid-template-rows:auto auto;gap:8px;align-content:start}
+.passive_label{text-align:center;font-family:var(--micro-label-font);font-size:var(--micro-label-size);font-weight:800;letter-spacing:.02em;color:rgba(21,47,81,.72)}
+.passive_text{height:auto;display:grid;place-items:start center;text-align:center;font-size:clamp(14px,2.4vw,18px);font-style:italic;color:rgba(17,17,17,.7);overflow:hidden}
+"
+
+css_d : String = "
+.queen_nav{height:100%;display:grid;grid-template-columns:var(--queen-nav-size) 1fr var(--queen-nav-size);align-items:start;gap:var(--queen-nav-gap);margin-top:calc(var(--queen-header-gap) - var(--card-gap))}
+.nav_spacer{width:var(--queen-nav-size);height:var(--queen-nav-size);display:block}
+.btn_nav{width:var(--queen-nav-size);height:var(--queen-nav-size);border:2px solid #111;background:#fff;font-size:30px;line-height:1;cursor:pointer}
+.menu_actions,.queen_actions{grid-row:6;display:grid;justify-items:center;align-content:start;gap:var(--menu-actions-gap)}
+.queen_sprite_box{width:var(--queen-stage-size);height:var(--queen-stage-size);margin:0 auto;display:grid;place-items:center;background-image:url('./assets/bg-square.png');background-repeat:no-repeat;background-size:var(--queen-bg-size);background-position:center calc(50% + var(--queen-stage-offset-y))}
+.queen_sprite{width:var(--queen-piece-size);height:var(--queen-piece-size);max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;transform:translateY(var(--queen-stage-offset-y))}
+"
+
+css_e : String = "
+.btn_primary,.btn_selected{width:min(var(--menu-button-width),90vw);height:var(--menu-button-height);margin:0 auto;border:3px solid #111;background:#fff;font-size:clamp(28px,6vw,44px);font-weight:900;cursor:pointer}
+.btn_play{width:auto;min-width:160px;height:46px;padding:0 28px;border:none;outline:none;background:#A4F28E;font-family:'Poppins','Trebuchet MS',sans-serif;font-weight:900;font-size:clamp(18px,4vw,25px)}
+.btn_select_available{background:#A4F28E;color:#111}
+.btn_select_current{background:#D8D8D8;color:#4C4C4C;cursor:default}
+.btn_selected{color:#4c4c4c;cursor:default}
+.btn_link{height:100%;border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,5.2vw,38px);color:#111;cursor:pointer;display:grid;place-items:center}
+.btn_change_queen{height:auto;font-family:'Poppins','Trebuchet MS',sans-serif;font-weight:900;font-size:clamp(12px,2.4vw,16px);text-transform:uppercase;color:#1D4E0E}
+.btn_back{height:100%;border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,5.2vw,38px);color:#111;cursor:pointer;display:grid;place-items:center}
+"
+
+css_f : String = "
 .match_top{height:100%;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .match_turn{font-size:clamp(24px,4.2vw,40px);font-weight:800;line-height:1}
 .btn_x{border:none;background:transparent;color:#111;font-size:clamp(34px,5.5vw,54px);font-weight:900;line-height:1;cursor:pointer;padding:0;text-decoration:none;display:inline-block}
@@ -933,15 +976,15 @@ css_c : String = "
 .cell_dark{background:#bba27f}
 "
 
-css_d : String = "
+css_g : String = "
 .cell_inner{width:100%;height:100%;display:grid;place-items:center;position:relative}
 .piece_empty,.overlay_none{display:none}
-.piece_img{width:84%;height:84%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.piece_img{width:var(--board-piece-size);height:var(--board-piece-size);object-fit:contain;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
 .cell_target_dot{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(20px,4vw,30px);color:#31586f;line-height:1;pointer-events:none}
 .cell_selected_ring{position:absolute;inset:3px;border:3px solid #1f6fa5;border-radius:8px;pointer-events:none}
 .cell_check_badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:999px;background:#b42318;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;pointer-events:none}
 "
 
-css : String = css_a ++ css_b ++ css_c ++ css_d
+css : String = css_a ++ css_b ++ css_c ++ css_d ++ css_e ++ css_f ++ css_g
 
 main : App = app{Chess/Types/RootState, Event, init, render, on_event}
