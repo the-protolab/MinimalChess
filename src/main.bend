@@ -959,9 +959,9 @@ css_a : String = "
 "
 
 css_b : String = "
-html{height:100%;overflow:hidden}
+html{height:100%;overflow:hidden;overscroll-behavior:none}
 *{box-sizing:border-box;margin:0}
-body{height:100%;overflow:hidden;background:#FFFADA;color:#111;font-family:var(--body-font);font-weight:500}
+body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;background:#FFFADA;color:#111;font-family:var(--body-font);font-weight:500}
 .page{height:100%;padding:var(--app-pad);display:grid;place-items:center}
 .screen_stack{width:100%;display:grid;place-items:center}
 .menu_frame{
@@ -1065,7 +1065,7 @@ css_g : String = "
 .cell_check_badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:999px;background:#b42318;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;pointer-events:none}
 @media (max-width: 600px){
   :root{--app-pad:8px;--card-width:100vw;--menu-card-height:100vh;--match-card-height:100vh}
-  .page{padding:var(--app-pad);overflow:auto}
+  .page{padding:var(--app-pad);overflow:hidden}
 }
 @media (min-width: 900px){
   .btn_x{position:fixed;top:var(--match-close-top);right:var(--match-close-right);z-index:20;font-family:'Poppins','Trebuchet MS',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(122,31,31,.82)}
