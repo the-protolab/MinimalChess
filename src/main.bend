@@ -518,6 +518,7 @@ def render_match_view_hidden(
     <div class="match_grid_wrap">
       <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
     </div>
+    {render_match_outcome_modal(game)}
   </section>
 
 def render_match_view_visible(
@@ -538,6 +539,7 @@ def render_match_view_visible(
       <div class="match_info">{text{info_line}}</div>
     </div>
     {render_match_board_mount(game, rules)}
+    {render_match_outcome_modal(game)}
   </section>
 
 def render_match_close_link() -> HTML(Event):
@@ -545,6 +547,24 @@ def render_match_close_link() -> HTML(Event):
     <span class="match_close_mobile">{text{"X"}}</span>
     <span class="match_close_desktop">{text{"RESIGN"}}</span>
   </a>
+
+def render_match_outcome_modal(game: Chess/Types/GameState) -> HTML(Event):
+  match match_outcome_modal_visible(game):
+    case 0:
+      render_match_outcome_modal_hidden()
+    case _:
+      render_match_outcome_modal_visible(game)
+
+def render_match_outcome_modal_hidden() -> HTML(Event):
+  <div class="match_outcome_modal screen_hidden">{text{""}}</div>
+
+def render_match_outcome_modal_visible(game: Chess/Types/GameState) -> HTML(Event):
+  <div class="match_outcome_modal">
+    <div class="match_outcome_card">
+      <div class="match_outcome_text">{text{match_outcome_popup_text(game)}}</div>
+      <a class="match_outcome_ok" href="./">{text{"OK"}}</a>
+    </div>
+  </div>
 
 def render_match_board_mount(
   game: Chess/Types/GameState,
@@ -585,9 +605,26 @@ def match_turn_side(state: Chess/Types/GameState) -> String:
 def match_info_line(state: Chess/Types/GameState) -> String:
   match state:
     case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
-      "Last White: " ++ last_white
-      ++ " | Last Black: " ++ last_black
-      ++ " | Outcome: " ++ Chess/Engine/outcome_text(outcome)
+      moves_line = "Last White: " ++ last_white ++ " | Last Black: " ++ last_black
+      match Chess/Engine/is_playing(outcome):
+        case 0:
+          moves_line
+        case _:
+          moves_line ++ " | Outcome: " ++ Chess/Engine/outcome_text(outcome)
+
+def match_outcome_modal_visible(state: Chess/Types/GameState) -> U32:
+  match state:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      match Chess/Engine/is_playing(outcome):
+        case 0:
+          1
+        case _:
+          0
+
+def match_outcome_popup_text(state: Chess/Types/GameState) -> String:
+  match state:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      Chess/Engine/outcome_text(outcome)
 
 def is_menu_screen(screen: Chess/Types/Screen) -> U32:
   match screen:
@@ -902,6 +939,7 @@ css_a : String = "
   --match-close-top:18px;
   --match-close-right:22px;
   --board-gap:2px;
+  --board-radius:8px;
   --board-max-size:calc(var(--card-width) - (2 * var(--card-pad)));
   --board-piece-size:90%;
   --queen-nav-size:52px;
@@ -996,6 +1034,10 @@ css_f : String = "
 .match_close_mobile{display:inline}
 .match_close_desktop{display:none}
 .match_info{overflow:hidden;font-size:clamp(11px,1.7vw,15px);line-height:1.05}
+.match_outcome_modal{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:rgba(255,250,218,.78);z-index:40}
+.match_outcome_card{width:min(360px,calc(100vw - 40px));border:2px solid #111;border-radius:16px;background:#FFFADA;padding:24px 20px;display:grid;justify-items:center;gap:14px;box-shadow:0 12px 32px rgba(0,0,0,.18)}
+.match_outcome_text{text-align:center;font-family:'Poppins','Trebuchet MS',sans-serif;font-size:clamp(18px,3vw,24px);font-weight:800;line-height:1.1;color:#111}
+.match_outcome_ok{min-width:96px;height:42px;padding:0 20px;border:none;border-radius:999px;background:#A4F28E;color:#111;text-decoration:none;display:grid;place-items:center;font-family:'Poppins','Trebuchet MS',sans-serif;font-size:14px;font-weight:900;letter-spacing:.04em}
 .match_grid_wrap{width:100%;height:100%;min-height:0;display:grid;place-items:center;overflow:hidden}
 .board{
   width:100%;
@@ -1005,6 +1047,8 @@ css_f : String = "
   display:grid;
   grid-template-rows:repeat(8,minmax(0,1fr));
   gap:var(--board-gap);
+  border-radius:var(--board-radius);
+  overflow:hidden;
 }
 .board_row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:var(--board-gap)}
 .cell_light,.cell_dark{width:100%;height:100%;border:none;cursor:pointer;display:grid;place-items:center;position:relative;overflow:hidden;padding:0}
