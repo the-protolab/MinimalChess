@@ -22,7 +22,7 @@ def choose_from_count(
 
 def bot_index(state: Chess/Types/GameState, count: U32) -> U32:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       (((seed * 1664525) + 1013904223) % count)
 
 def move_at(moves: List(Chess/Types/Move), idx: U32) -> Maybe(Chess/Types/Move):

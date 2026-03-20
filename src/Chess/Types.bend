@@ -39,6 +39,7 @@ type Controller {
 
 type Screen {
   menu_screen{}
+  queen_screen{}
   match_screen{}
 }
 
@@ -86,6 +87,8 @@ type GameState {
     targets: List(Move),
     status: String,
     last_move: String,
+    last_white_move: String,
+    last_black_move: String,
     outcome: Outcome,
     seed: U32,
     white_ctrl: Controller,
@@ -96,7 +99,7 @@ type GameState {
 type RootState {
   root{
     screen: Screen,
-    queen_popup_open: U32,
+    queen_cursor: QueenId,
     inventory: Inventory,
     rules: RuleSet,
     game_state: GameState,

@@ -5,12 +5,12 @@ type Event {
   square_click{row: U32, col: U32}
   bot_tick{}
   restart{}
-  open_shop{}
-  close_shop{}
-  buy{qid: Chess/Types/QueenId}
-  equip{qid: Chess/Types/QueenId}
+  open_queen{}
+  queen_prev{}
+  queen_next{}
+  select_unlock{}
   start{}
-  back{}
+  back_menu{}
   nop{}
 }
 
@@ -18,7 +18,7 @@ def init_root() -> Chess/Types/RootState:
   inv = Chess/Queens/initial_inventory()
   rules = Chess/Queens/resolve_rules(inv)
   game = Chess/Engine/init_state_with_rules(rules)
-  root{menu_screen{}, 0, inv, rules, game, "Pick a queen, then start a match."}
+  root{menu_screen{}, Chess/Queens/selected_queen(inv), inv, rules, game, "Pick a queen, then press PLAY."}
 
 init : Chess/Types/RootState =
   init_root()
@@ -35,60 +35,32 @@ def on_event(evt: Event, state: Chess/Types/RootState) -> Chess/Types/RootState:
       on_bot_tick_root(state)
     case restart{}:
       on_restart_match(state)
-    case open_shop{}:
-      on_open_shop(state)
-    case close_shop{}:
-      on_close_shop(state)
-    case buy{qid}:
-      on_buy_queen(state, qid)
-    case equip{qid}:
-      on_select_queen(state, qid)
+    case open_queen{}:
+      on_open_queen(state)
+    case queen_prev{}:
+      on_queen_prev(state)
+    case queen_next{}:
+      on_queen_next(state)
+    case select_unlock{}:
+      on_select_unlock(state)
     case start{}:
       on_start_match(state)
-    case back{}:
-      on_back_to_menu(state)
+    case back_menu{}:
+      on_back_menu(state)
     case nop{}:
       state
 
 def on_square_click_root(state: Chess/Types/RootState, row: U32, col: U32) -> Chess/Types/RootState:
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
         case menu_screen{}:
-          root{menu_screen{}, popup, inv, rules, game, "Press START MATCH to play."}
+          root{menu_screen{}, cursor, inv, rules, game, menu_status}
+        case queen_screen{}:
+          root{queen_screen{}, cursor, inv, rules, game, menu_status}
         case match_screen{}:
           game2 = on_square_click_game(rules, game, row, col)
-          on_match_square_result(popup, inv, rules, game2, menu_status)
-
-def on_match_square_result(
-  popup: U32,
-  inv: Chess/Types/Inventory,
-  rules: Chess/Types/RuleSet,
-  state: Chess/Types/GameState,
-  menu_status: String,
-) -> Chess/Types/RootState:
-  match state:
-    case game{b2, s2, sel2, t2, st2, lm2, out2, sd2, wc2, bc2}:
-      on_match_square_result_outcome(popup, inv, rules, state, menu_status, out2)
-
-def on_match_square_result_outcome(
-  popup: U32,
-  inv: Chess/Types/Inventory,
-  rules: Chess/Types/RuleSet,
-  state: Chess/Types/GameState,
-  menu_status: String,
-  outcome: Chess/Types/Outcome,
-) -> Chess/Types/RootState:
-  match outcome:
-    case playing{}:
-      root{match_screen{}, popup, inv, rules, state, menu_status}
-    case _:
-      rules2 = Chess/Queens/resolve_rules(inv)
-      msg = post_match_menu_status_outcome(outcome)
-      root{menu_screen{}, 0, inv, rules2, state, msg}
-
-def post_match_menu_status_outcome(outcome: Chess/Types/Outcome) -> String:
-  "Match finished: " ++ Chess/Engine/outcome_text(outcome) ++ ". Pick a queen, then start a new match."
+          root{match_screen{}, cursor, inv, rules, game2, menu_status}
 
 def on_bot_tick_root(state: Chess/Types/RootState) -> Chess/Types/RootState:
   # Tick disabled to avoid UI click contention from continuous rerender.
@@ -96,80 +68,73 @@ def on_bot_tick_root(state: Chess/Types/RootState) -> Chess/Types/RootState:
 
 def on_restart_match(state: Chess/Types/RootState) -> Chess/Types/RootState:
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
         case menu_screen{}:
-          root{menu_screen{}, popup, inv, rules, game, "Start a match first."}
+          root{menu_screen{}, cursor, inv, rules, game, "Start a match first."}
+        case queen_screen{}:
+          root{queen_screen{}, cursor, inv, rules, game, "Start a match from the menu."}
         case match_screen{}:
           game2 = Chess/Engine/init_state_with_rules(rules)
           game3 = Chess/Engine/set_status(game2, "Match restarted.")
-          root{match_screen{}, popup, inv, rules, game3, menu_status}
+          root{match_screen{}, cursor, inv, rules, game3, menu_status}
 
-def on_open_shop(state: Chess/Types/RootState) -> Chess/Types/RootState:
+def on_open_queen(state: Chess/Types/RootState) -> Chess/Types/RootState:
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
         case menu_screen{}:
-          root{menu_screen{}, 1, inv, rules, game, menu_status}
+          root{queen_screen{}, Chess/Queens/selected_queen(inv), inv, rules, game, "Use < and > to browse queens."}
+        case queen_screen{}:
+          root{queen_screen{}, cursor, inv, rules, game, menu_status}
         case match_screen{}:
-          game2 = Chess/Engine/set_status(game, "Back to menu to change queen.")
-          root{match_screen{}, popup, inv, rules, game2, menu_status}
+          root{match_screen{}, cursor, inv, rules, game, menu_status}
 
-def on_close_shop(state: Chess/Types/RootState) -> Chess/Types/RootState:
+def on_queen_prev(state: Chess/Types/RootState) -> Chess/Types/RootState:
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
-        case menu_screen{}:
-          root{menu_screen{}, 0, inv, rules, game, menu_status}
-        case match_screen{}:
-          root{match_screen{}, popup, inv, rules, game, menu_status}
+        case queen_screen{}:
+          root{queen_screen{}, queen_prev_id(cursor), inv, rules, game, menu_status}
+        case scr:
+          root{scr, cursor, inv, rules, game, menu_status}
 
-def on_buy_queen(state: Chess/Types/RootState, qid: Chess/Types/QueenId) -> Chess/Types/RootState:
+def on_queen_next(state: Chess/Types/RootState) -> Chess/Types/RootState:
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
-        case menu_screen{}:
-          was = Chess/Queens/is_unlocked(inv, qid)
-          inv2 = Chess/Queens/buy(inv, qid)
-          msg = buy_menu_message(was, Chess/Queens/queen_name(qid))
-          root{menu_screen{}, popup, inv2, Chess/Queens/resolve_rules(inv2), game, msg}
-        case match_screen{}:
-          game2 = Chess/Engine/set_status(game, "Queen shop is only available before match.")
-          root{match_screen{}, popup, inv, rules, game2, menu_status}
+        case queen_screen{}:
+          root{queen_screen{}, queen_next_id(cursor), inv, rules, game, menu_status}
+        case scr:
+          root{scr, cursor, inv, rules, game, menu_status}
 
-def buy_menu_message(was_unlocked: U32, name: String) -> String:
+def on_select_unlock(state: Chess/Types/RootState) -> Chess/Types/RootState:
+  match state:
+    case root{screen, cursor, inv, rules, game, menu_status}:
+      match screen:
+        case queen_screen{}:
+          was_unlocked = Chess/Queens/is_unlocked(inv, cursor)
+          inv2 = Chess/Queens/buy(inv, cursor)
+          inv3 = Chess/Queens/select(inv2, cursor)
+          msg = select_unlock_message(was_unlocked, cursor)
+          root{queen_screen{}, cursor, inv3, Chess/Queens/resolve_rules(inv3), game, msg}
+        case scr:
+          root{scr, cursor, inv, rules, game, menu_status}
+
+def select_unlock_message(was_unlocked: U32, qid: Chess/Types/QueenId) -> String:
+  name = Chess/Queens/queen_name(qid)
+  select_unlock_message_with_name(was_unlocked, name)
+
+def select_unlock_message_with_name(was_unlocked: U32, name: String) -> String:
   match was_unlocked:
     case 0:
-      "Unlocked " ++ name ++ "."
-    case _:
-      name ++ " is already unlocked."
-
-def on_select_queen(state: Chess/Types/RootState, qid: Chess/Types/QueenId) -> Chess/Types/RootState:
-  match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
-      match screen:
-        case menu_screen{}:
-          unlocked = Chess/Queens/is_unlocked(inv, qid)
-          inv2 = Chess/Queens/select(inv, qid)
-          msg = select_menu_message(unlocked, qid)
-          root{menu_screen{}, popup, inv2, Chess/Queens/resolve_rules(inv2), game, msg}
-        case match_screen{}:
-          game2 = Chess/Engine/set_status(game, "Queen can only be changed before match.")
-          root{match_screen{}, popup, inv, rules, game2, menu_status}
-
-def select_menu_message(unlocked: U32, qid: Chess/Types/QueenId) -> String:
-  select_menu_message_name(unlocked, Chess/Queens/queen_name(qid))
-
-def select_menu_message_name(unlocked: U32, name: String) -> String:
-  match unlocked:
-    case 0:
-      "Buy " ++ name ++ " first."
+      "Unlocked and selected " ++ name ++ "."
     case _:
       "Selected " ++ name ++ "."
 
 def on_start_match(state: Chess/Types/RootState) -> Chess/Types/RootState:
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
         case menu_screen{}:
           rules2 = Chess/Queens/resolve_rules(inv)
@@ -177,18 +142,40 @@ def on_start_match(state: Chess/Types/RootState) -> Chess/Types/RootState:
           qid = Chess/Queens/selected_queen(inv)
           qname = Chess/Queens/queen_name(qid)
           game3 = Chess/Engine/set_status(game2, "Match started with " ++ qname ++ ". " ++ active_rules_text(rules2))
-          root{match_screen{}, 0, inv, rules2, game3, menu_status}
+          root{match_screen{}, cursor, inv, rules2, game3, menu_status}
+        case queen_screen{}:
+          root{queen_screen{}, cursor, inv, rules, game, "Tap back, then PLAY from the menu."}
         case match_screen{}:
-          root{match_screen{}, popup, inv, rules, game, menu_status}
+          root{match_screen{}, cursor, inv, rules, game, menu_status}
 
-def on_back_to_menu(state: Chess/Types/RootState) -> Chess/Types/RootState:
+def on_back_menu(state: Chess/Types/RootState) -> Chess/Types/RootState:
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
         case menu_screen{}:
-          root{menu_screen{}, popup, inv, rules, game, menu_status}
+          root{menu_screen{}, Chess/Queens/selected_queen(inv), inv, rules, game, menu_status}
+        case queen_screen{}:
+          root{menu_screen{}, Chess/Queens/selected_queen(inv), inv, Chess/Queens/resolve_rules(inv), game, "Pick a queen, then press PLAY."}
         case match_screen{}:
-          root{menu_screen{}, 0, inv, Chess/Queens/resolve_rules(inv), game, "Back in menu. Change queen and start a match."}
+          root{menu_screen{}, Chess/Queens/selected_queen(inv), inv, Chess/Queens/resolve_rules(inv), game, "Back in menu. Pick a queen, then press PLAY."}
+
+def queen_prev_id(qid: Chess/Types/QueenId) -> Chess/Types/QueenId:
+  match qid:
+    case queen_default{}:
+      queen_minus{}
+    case queen_plus{}:
+      queen_default{}
+    case queen_minus{}:
+      queen_plus{}
+
+def queen_next_id(qid: Chess/Types/QueenId) -> Chess/Types/QueenId:
+  match qid:
+    case queen_default{}:
+      queen_plus{}
+    case queen_plus{}:
+      queen_minus{}
+    case queen_minus{}:
+      queen_default{}
 
 # ----------------
 # Match event loop
@@ -199,7 +186,7 @@ def on_bot_tick_game(
   state: Chess/Types/GameState,
 ) -> Chess/Types/GameState:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       on_bot_tick_live(rules, state, Chess/Engine/is_playing(outcome))
 
 def on_bot_tick_live(
@@ -245,10 +232,10 @@ def on_square_click_game(
   col: U32,
 ) -> Chess/Types/GameState:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       match Chess/Engine/is_playing(outcome):
         case 0:
-          Chess/Engine/set_status(state, "Game over. Press Restart to play again.")
+          Chess/Engine/set_status(state, "Game over.")
         case _:
           ctrl = Chess/Engine/active_controller(state)
           on_square_click_ctrl(rules, state, row, col, ctrl)
@@ -273,7 +260,7 @@ def on_square_click_human(
   col: U32,
 ) -> Chess/Types/GameState:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       clicked = (pos{row, col} :: Chess/Types/Pos)
       cell = Chess/Engine/board_get(board, row, col)
       on_square_click_human_sel(rules, state, clicked, cell, side, selected)
@@ -340,7 +327,7 @@ def try_selected_move(
   clicked: Chess/Types/Pos,
 ) -> Chess/Types/GameState:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       mv = (move{sel, clicked} :: Chess/Types/Move)
       match Chess/Engine/move_in_list(mv, targets):
         case 0:
@@ -377,128 +364,139 @@ def render(state: Chess/Types/RootState) -> HTML(Event):
 
 def render_screen(state: Chess/Types/RootState) -> HTML(Event):
   match state:
-    case root{screen, popup, inv, rules, game, menu_status}:
+    case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
         case menu_screen{}:
-          render_menu(inv, popup, menu_status)
+          <section class="screen_root">{render_menu(inv)}</section>
+        case queen_screen{}:
+          <article class="screen_root">{render_queen_screen(cursor, inv)}</article>
         case match_screen{}:
-          render_match(inv, rules, game)
+          <main class="screen_root">{render_match(rules, game)}</main>
 
-def render_menu(
-  inv: Chess/Types/Inventory,
-  popup: U32,
-  menu_status: String,
-) -> HTML(Event):
+def render_menu(inv: Chess/Types/Inventory) -> HTML(Event):
   qid = Chess/Queens/selected_queen(inv)
-  qname = Chess/Queens/queen_name(qid)
-  info = "Selected Queen: " ++ qname ++ " | " ++ queen_passive_text(qid)
-  render_menu_popup(popup, info, menu_status, inv)
+  info = queen_wire_name(qid)
+  details = queen_passive_text(qid)
+  render_menu_view(qid, info, details)
 
-def render_menu_popup(
-  popup: U32,
-  info: String,
-  menu_status: String,
-  inv: Chess/Types/Inventory,
-) -> HTML(Event):
-  match popup:
-    case 0:
-      render_menu_closed(info, menu_status)
-    case _:
-      render_menu_open(info, menu_status, inv)
-
-def render_menu_closed(info: String, menu_status: String) -> HTML(Event):
-  <section class="menu_root">
-    <h1 class="title">Minimal Chess</h1>
-    <div class="sub">Pre-match queen shop</div>
-    <div class="status_menu">{text{info}}</div>
-    <div><button class="secondary" on_click={open_shop{}}>{text{"CHANGE QUEEN"}}</button></div>
-    <div><button class="restart" on_click={start{}}>{text{"START MATCH"}}</button></div>
-    <div class="status_menu">{text{menu_status}}</div>
-  </section>
-
-def render_menu_open(
-  info: String,
-  menu_status: String,
-  inv: Chess/Types/Inventory,
-) -> HTML(Event):
-  <section class="menu_root">
-    <h1 class="title">Minimal Chess</h1>
-    <div class="sub">Pre-match queen shop</div>
-    <div class="status_menu">{text{info}}</div>
-    <div><button class="secondary" on_click={close_shop{}}>{text{"CLOSE SHOP"}}</button></div>
-    <div><button class="restart" on_click={start{}}>{text{"START MATCH"}}</button></div>
-    <div class="status_menu">{text{menu_status}}</div>
-    <section class="shop">
-      {render_shop_card(inv, queen_default{})}
-      {render_shop_card(inv, queen_plus{})}
-      {render_shop_card(inv, queen_minus{})}
-    </section>
-  </section>
-
-def render_shop_card(inv: Chess/Types/Inventory, qid: Chess/Types/QueenId) -> HTML(Event):
-  unlocked = Chess/Queens/is_unlocked(inv, qid)
-  selected = queen_id_eq(Chess/Queens/selected_queen(inv), qid)
-  label = Chess/Queens/queen_name(qid) ++ " - " ++ queen_passive_text(qid)
-  render_shop_card_selected(selected, qid, unlocked, label)
-
-def render_shop_card_selected(
-  selected: U32,
+def render_menu_view(
   qid: Chess/Types/QueenId,
-  unlocked: U32,
-  label: String,
+  info: String,
+  details: String,
 ) -> HTML(Event):
+  <section class="menu_frame">
+    <div class="menu_kicker">{text{"SELECTED QUEEN"}}</div>
+    <div class="menu_title">{text{info}}</div>
+    <div class="menu_desc">{text{details}}</div>
+    <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
+    <button class="btn_primary" on_click={start{}}>{text{"PLAY"}}</button>
+    <button class="btn_link" on_click={open_queen{}}>{text{"change queen"}}</button>
+  </section>
+
+def render_queen_screen(
+  cursor: Chess/Types/QueenId,
+  inv: Chess/Types/Inventory,
+) -> HTML(Event):
+  unlocked = Chess/Queens/is_unlocked(inv, cursor)
+  selected = queen_id_eq(Chess/Queens/selected_queen(inv), cursor)
+  info = queen_wire_name(cursor)
+  details = queen_passive_text(cursor)
+  render_queen_screen_view(cursor, unlocked, selected, info, details)
+
+def render_queen_screen_view(
+  cursor: Chess/Types/QueenId,
+  unlocked: U32,
+  selected: U32,
+  info: String,
+  details: String,
+) -> HTML(Event):
+  <section class="menu_frame">
+    <div class="menu_kicker">{text{"SELECT QUEEN"}}</div>
+    <div class="queen_nav">
+      <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
+      <div class="menu_title">{text{info}}</div>
+      <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
+    </div>
+    <div class="menu_desc">{text{details}}</div>
+    <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
+    {render_select_unlock_button(unlocked, selected)}
+    <button class="btn_link" on_click={back_menu{}}>{text{"back"}}</button>
+  </section>
+
+def render_select_unlock_button(unlocked: U32, selected: U32) -> HTML(Event):
+  render_select_unlock_button_selected(selected, unlocked)
+
+def render_select_unlock_button_selected(selected: U32, unlocked: U32) -> HTML(Event):
   match selected:
     case 0:
-      render_shop_card_unlocked(qid, unlocked, label)
+      render_select_unlock_button_unlocked(unlocked)
     case _:
-      <div class="shop_row">
-        <div>{text{label}}</div>
-        <button class="qbtn_selected" on_click={nop{}}>{text{"Selected"}}</button>
-      </div>
+      <button class="btn_selected" on_click={nop{}}>{text{"SELECTED"}}</button>
 
-def render_shop_card_unlocked(qid: Chess/Types/QueenId, unlocked: U32, label: String) -> HTML(Event):
+def render_select_unlock_button_unlocked(unlocked: U32) -> HTML(Event):
   match unlocked:
     case 0:
-      <div class="shop_row">
-        <div>{text{label}}</div>
-        <button class="qbtn_buy" on_click={buy{qid}}>{text{"Buy"}}</button>
-      </div>
+      <button class="btn_primary" on_click={select_unlock{}}>{text{"UNLOCK"}}</button>
     case _:
-      <div class="shop_row">
-        <div>{text{label}}</div>
-        <button class="qbtn_select" on_click={equip{qid}}>{text{"Select"}}</button>
-      </div>
+      <button class="btn_primary" on_click={select_unlock{}}>{text{"SELECT"}}</button>
 
 def render_match(
-  inv: Chess/Types/Inventory,
   rules: Chess/Types/RuleSet,
   game: Chess/Types/GameState,
 ) -> HTML(Event):
-  <div class="match_root">
-    <section class="match_head">
-      <h1 class="title">Minimal Chess</h1>
-      <div class="status">{text{game_status_line(game, rules, inv)}}</div>
-      <div><button class="secondary" on_click={back{}}>{text{"Back to Menu"}}</button></div>
-      <div><button class="restart" on_click={restart{}}>{text{"Restart Match"}}</button></div>
-    </section>
-    <section class="match_board">
-      <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
-    </section>
-  </div>
+  turn_line = match_turn_line(game)
+  info_line = match_info_line(game)
+  render_match_view(rules, game, turn_line, info_line)
 
-def game_status_line(
-  state: Chess/Types/GameState,
+def render_match_view(
   rules: Chess/Types/RuleSet,
-  inv: Chess/Types/Inventory,
-) -> String:
+  game: Chess/Types/GameState,
+  turn_line: String,
+  info_line: String,
+) -> HTML(Event):
+  <section class="match_frame">
+    <div class="match_top">
+      <div class="match_turn">{text{turn_line}}</div>
+      <button class="btn_x" on_click={back_menu{}}>{text{"X"}}</button>
+    </div>
+    <div class="match_info">{text{info_line}}</div>
+    <div class="match_grid_wrap">
+      <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
+    </div>
+  </section>
+
+def match_turn_line(state: Chess/Types/GameState) -> String:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
-      "Queen: " ++ Chess/Queens/queen_name(Chess/Queens/selected_queen(inv))
-      ++ " | " ++ active_rules_text(rules)
-      ++ " | Turn: " ++ Chess/Engine/color_name(side)
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      "Turn: " ++ Chess/Engine/color_name(side)
+
+def match_info_line(state: Chess/Types/GameState) -> String:
+  match state:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      "Last White: " ++ last_white
+      ++ " | Last Black: " ++ last_black
       ++ " | Outcome: " ++ Chess/Engine/outcome_text(outcome)
-      ++ " | Last: " ++ last_move
-      ++ " | " ++ status
+
+def queen_wire_name(qid: Chess/Types/QueenId) -> String:
+  match qid:
+    case queen_default{}:
+      "DEFAULT QUEEN"
+    case queen_plus{}:
+      "QUEEN +"
+    case queen_minus{}:
+      "QUEEN -"
+
+def render_queen_sprite(qid: Chess/Types/QueenId) -> HTML(Event):
+  <img class="queen_sprite" src={queen_sprite_src(qid)} alt={queen_wire_name(qid)}></img>
+
+def queen_sprite_src(qid: Chess/Types/QueenId) -> String:
+  match qid:
+    case queen_default{}:
+      "./assets/chess-pieces/whitequeen.svg"
+    case queen_plus{}:
+      "./assets/chess-pieces/blackqueen.svg"
+    case queen_minus{}:
+      "./assets/chess-pieces/whiteking.svg"
 
 def active_rules_text(rules: Chess/Types/RuleSet) -> String:
   match rules:
@@ -559,7 +557,7 @@ def render_cell(
   col: U32,
 ) -> HTML(Event):
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       cell = Chess/Engine/board_get(board, row, col)
       sel = is_selected(state, row, col)
       trg = is_target(state, row, col)
@@ -690,12 +688,12 @@ def piece_alt_kind(color: Chess/Types/Color, kind: Chess/Types/PieceKind) -> Str
 
 def state_zero(state: Chess/Types/GameState) -> U32:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       seed - seed
 
 def is_selected(state: Chess/Types/GameState, row: U32, col: U32) -> U32:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       match selected:
         case none{}:
           0
@@ -704,7 +702,7 @@ def is_selected(state: Chess/Types/GameState, row: U32, col: U32) -> U32:
 
 def is_target(state: Chess/Types/GameState, row: U32, col: U32) -> U32:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       Chess/Engine/move_targets_pos(targets, row, col)
 
 def is_checked_king(
@@ -742,47 +740,50 @@ def queen_passive_text(qid: Chess/Types/QueenId) -> String:
     case queen_minus{}:
       "Pawn first move: only 1 square."
 
-css : String = "
-  html { overflow-y:scroll; }
-  :root {
-    --cell-light:#f0d9b5;
-    --cell-dark:#b58863;
-    --cell-size:clamp(44px,8vw,72px);
-    --cell-gap:2px;
-    --paper:#fffaf0;
-    --ink:#231b14;
-    --accent:#355070;
-  }
-  * { box-sizing:border-box; margin:0; }
-  body { min-height:100vh; background:linear-gradient(180deg,#ffe8cc,#f3ead9); color:var(--ink); font-family:Trebuchet MS, sans-serif; padding:12px; overflow-x:hidden; }
-  .page { width:100%; display:grid; justify-items:center; }
-  .menu_root { width:min(760px,100%); display:grid; gap:10px; }
-  .match_root { width:min(980px,100%); display:grid; gap:10px; }
-  .match_head, .match_board { width:100%; display:grid; gap:10px; }
-  .title { font-size:clamp(24px,4vw,34px); line-height:1; }
-  .sub { font-size:14px; color:#6f5a43; }
-  .status, .status_menu { background:#fff2cf; border:1px solid #e4cd94; border-radius:8px; padding:8px; font-size:13px; }
-  .status { min-height:64px; max-height:64px; overflow:hidden; line-height:1.25; white-space:nowrap; text-overflow:ellipsis; }
-  .board { width:fit-content; display:inline-flex; flex-direction:column; gap:var(--cell-gap); }
-  .board_row { display:flex; gap:var(--cell-gap); }
-  .cell_light, .cell_dark { width:var(--cell-size); height:var(--cell-size); border:none; cursor:pointer; display:grid; place-items:center; position:relative; overflow:hidden; padding:0; }
-  .cell_light { background:var(--cell-light); }
-  .cell_dark { background:var(--cell-dark); }
-  .cell_inner { width:100%; height:100%; display:grid; place-items:center; position:relative; }
-  .piece_empty { display:none; }
-  .piece_img { width:84%; height:84%; object-fit:contain; pointer-events:none; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
-  .cell_target_dot { position:absolute; inset:0; display:grid; place-items:center; font-size:clamp(20px,4vw,30px); color:#31586f; line-height:1; pointer-events:none; }
-  .overlay_none { display:none; }
-  .cell_selected_ring { position:absolute; inset:3px; border:3px solid #1f6fa5; border-radius:8px; pointer-events:none; }
-  .cell_check_badge { position:absolute; top:2px; right:2px; min-width:16px; height:16px; border-radius:999px; background:#b42318; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-  .shop { background:#fff4df; border:1px solid #ddc7a1; border-radius:10px; padding:8px; display:grid; gap:8px; }
-  .shop_row { background:#fff8ed; border:1px solid #ddc7a1; border-radius:8px; padding:8px; display:grid; gap:6px; }
-  .restart, .secondary, .qbtn_buy, .qbtn_select, .qbtn_selected { border:none; border-radius:10px; font-weight:700; padding:10px 14px; cursor:pointer; }
-  .restart { background:var(--accent); color:#fff; }
-  .secondary { background:#d8e3ff; color:#263859; }
-  .qbtn_buy { background:#6c5b4a; color:#fff; }
-  .qbtn_select { background:#375a7f; color:#fff; }
-  .qbtn_selected { background:#2e7d5b; color:#fff; }
+css_a : String = "
+html{overflow-y:scroll}
+*{box-sizing:border-box;margin:0}
+body{min-height:100vh;overflow-x:hidden;padding:16px;background:#efefef;color:#111;font-family:Trebuchet MS,sans-serif}
+.page{min-height:calc(100vh - 32px);display:grid;place-items:center}
+.screen_root{width:100%;display:grid;place-items:center}
+.menu_frame,.match_frame{width:min(92vw,560px);border:3px solid #111;padding:22px;display:grid;gap:14px;background:transparent}
+.menu_kicker{text-align:center;font-size:clamp(22px,4vw,40px);font-weight:800;letter-spacing:.06em}
+.menu_title{text-align:center;font-size:clamp(36px,7vw,64px);line-height:1;font-weight:900}
+.menu_desc{text-align:center;font-size:clamp(18px,2.8vw,30px);font-style:italic;min-height:40px;max-height:78px;overflow:hidden}
 "
+
+css_b : String = "
+.queen_nav{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:8px}
+.btn_nav{width:52px;height:52px;border:2px solid #111;background:#fff;font-size:30px;line-height:1;cursor:pointer}
+.queen_sprite_box{width:min(70vw,250px);height:min(70vw,250px);margin:0 auto;border:3px solid #111;display:grid;place-items:center;background:#f8f8f8}
+.queen_sprite{width:84%;height:84%;object-fit:contain;pointer-events:none}
+.btn_primary,.btn_selected{width:min(100%,420px);height:64px;margin:0 auto;border:3px solid #111;background:#fff;font-size:clamp(30px,7vw,50px);font-weight:900;cursor:pointer}
+.btn_selected{color:#4c4c4c;cursor:default}
+.btn_link{border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,6vw,44px);color:#111;cursor:pointer}
+"
+
+css_c : String = "
+.match_top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.match_turn{font-size:clamp(26px,4.5vw,46px);font-weight:800;line-height:1}
+.btn_x{border:none;background:transparent;color:#111;font-size:clamp(34px,5.5vw,54px);font-weight:900;line-height:1;cursor:pointer;padding:0}
+.match_info{min-height:62px;max-height:62px;overflow:hidden;font-size:clamp(18px,2.8vw,30px);line-height:1.18}
+.match_grid_wrap{display:grid;justify-items:center}
+.board{display:inline-flex;flex-direction:column;gap:2px;width:fit-content}
+.board_row{display:flex;gap:2px}
+.cell_light,.cell_dark{width:clamp(40px,8vw,64px);height:clamp(40px,8vw,64px);border:none;cursor:pointer;display:grid;place-items:center;position:relative;overflow:hidden;padding:0}
+.cell_light{background:#efe5d3}
+.cell_dark{background:#bba27f}
+"
+
+css_d : String = "
+.cell_inner{width:100%;height:100%;display:grid;place-items:center;position:relative}
+.piece_empty,.overlay_none{display:none}
+.piece_img{width:84%;height:84%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.cell_target_dot{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(20px,4vw,30px);color:#31586f;line-height:1;pointer-events:none}
+.cell_selected_ring{position:absolute;inset:3px;border:3px solid #1f6fa5;border-radius:8px;pointer-events:none}
+.cell_check_badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:999px;background:#b42318;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;pointer-events:none}
+"
+
+css : String = css_a ++ css_b ++ css_c ++ css_d
 
 main : App = app{Chess/Types/RootState, Event, init, render, on_event}

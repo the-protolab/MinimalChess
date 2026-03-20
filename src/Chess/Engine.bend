@@ -198,7 +198,7 @@ def init_board() -> List(Maybe(Chess/Types/Piece)):
   init_board_i(0)
 
 def init_state_with_rules(rule_set: Chess/Types/RuleSet) -> Chess/Types/GameState:
-  game{init_board(), white{}, no_selection(), no_targets(), "White to move.", "-", playing{}, 1, human{}, bot{}}
+  game{init_board(), white{}, no_selection(), no_targets(), "White to move.", "-", "-", "-", playing{}, 1, human{}, bot{}}
 
 init_state : Chess/Types/GameState =
   init_state_with_rules(Chess/Queens/default_rules())
@@ -737,7 +737,7 @@ def board_after_move(board: List(Maybe(Chess/Types/Piece)), mv: Chess/Types/Move
 
 def legal_moves_for_side(rule_set: Chess/Types/RuleSet, state: Chess/Types/GameState) -> List(Chess/Types/Move):
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       legal_moves_for_board_side(rule_set, board, side)
 
 def legal_moves_for_board_side(
@@ -891,11 +891,11 @@ def is_playing(outcome: Chess/Types/Outcome) -> U32:
 
 def evaluate_outcome(rule_set: Chess/Types/RuleSet, state: Chess/Types/GameState) -> Chess/Types/GameState:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       moves = legal_moves_for_board_side(rule_set, board, side)
       no_moves = list_is_empty(Chess/Types/Move, moves)
       check = is_in_check(board, side)
-      evaluate_outcome_no_moves(board, side, selected, targets, last_move, seed, wc, bc, check, no_moves)
+      evaluate_outcome_no_moves(board, side, selected, targets, last_move, last_white, last_black, seed, wc, bc, check, no_moves)
 
 def evaluate_outcome_no_moves(
   board: List(Maybe(Chess/Types/Piece)),
@@ -903,6 +903,8 @@ def evaluate_outcome_no_moves(
   selected: Maybe(Chess/Types/Pos),
   targets: List(Chess/Types/Move),
   last_move: String,
+  last_white: String,
+  last_black: String,
   seed: U32,
   wc: Chess/Types/Controller,
   bc: Chess/Types/Controller,
@@ -911,9 +913,9 @@ def evaluate_outcome_no_moves(
 ) -> Chess/Types/GameState:
   match no_moves:
     case 0:
-      (game{board, side, selected, targets, turn_status(side, check), last_move, playing{}, seed, wc, bc} :: Chess/Types/GameState)
+      (game{board, side, selected, targets, turn_status(side, check), last_move, last_white, last_black, playing{}, seed, wc, bc} :: Chess/Types/GameState)
     case _:
-      evaluate_no_moves(board, side, selected, targets, last_move, seed, wc, bc, check)
+      evaluate_no_moves(board, side, selected, targets, last_move, last_white, last_black, seed, wc, bc, check)
 
 def evaluate_no_moves(
   board: List(Maybe(Chess/Types/Piece)),
@@ -921,6 +923,8 @@ def evaluate_no_moves(
   selected: Maybe(Chess/Types/Pos),
   targets: List(Chess/Types/Move),
   last_move: String,
+  last_white: String,
+  last_black: String,
   seed: U32,
   wc: Chess/Types/Controller,
   bc: Chess/Types/Controller,
@@ -928,15 +932,15 @@ def evaluate_no_moves(
 ) -> Chess/Types/GameState:
   match check:
     case 0:
-      game{board, side, selected, targets, "Stalemate.", last_move, stalemate{}, seed, wc, bc}
+      game{board, side, selected, targets, "Stalemate.", last_move, last_white, last_black, stalemate{}, seed, wc, bc}
     case _:
       winner = other_color(side)
-      game{board, side, selected, targets, "Checkmate. " ++ color_name(winner) ++ " wins.", last_move, checkmate{winner}, seed, wc, bc}
+      game{board, side, selected, targets, "Checkmate. " ++ color_name(winner) ++ " wins.", last_move, last_white, last_black, checkmate{winner}, seed, wc, bc}
 
 def set_status(state: Chess/Types/GameState, msg: String) -> Chess/Types/GameState:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
-      game{board, side, selected, targets, msg, last_move, outcome, seed, wc, bc}
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      game{board, side, selected, targets, msg, last_move, last_white, last_black, outcome, seed, wc, bc}
 
 def set_selection(
   state: Chess/Types/GameState,
@@ -945,15 +949,15 @@ def set_selection(
   msg: String,
 ) -> Chess/Types/GameState:
   match state:
-    case game{board, side, s0, t0, status, last_move, outcome, seed, wc, bc}:
-      game{board, side, selected, targets, msg, last_move, outcome, seed, wc, bc}
+    case game{board, side, s0, t0, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      game{board, side, selected, targets, msg, last_move, last_white, last_black, outcome, seed, wc, bc}
 
 def clear_selection(state: Chess/Types/GameState, msg: String) -> Chess/Types/GameState:
   set_selection(state, no_selection(), no_targets(), msg)
 
 def active_controller(state: Chess/Types/GameState) -> Chess/Types/Controller:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       match side:
         case white{}:
           wc
@@ -962,7 +966,7 @@ def active_controller(state: Chess/Types/GameState) -> Chess/Types/Controller:
 
 def checked_king_pos(rule_set: Chess/Types/RuleSet, state: Chess/Types/GameState) -> Maybe(Chess/Types/Pos):
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       match is_in_check(board, side):
         case 0:
           no_selection()
@@ -971,9 +975,9 @@ def checked_king_pos(rule_set: Chess/Types/RuleSet, state: Chess/Types/GameState
 
 def apply_move(rule_set: Chess/Types/RuleSet, state: Chess/Types/GameState, mv: Chess/Types/Move) -> Chess/Types/GameState:
   match state:
-    case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
       legal = move_in_list(mv, legal_moves_for_board_side(rule_set, board, side))
-      apply_move_legal(rule_set, board, side, selected, targets, outcome, seed, wc, bc, last_move, mv, legal)
+      apply_move_legal(rule_set, board, side, selected, targets, outcome, seed, wc, bc, last_move, last_white, last_black, mv, legal)
 
 def apply_move_legal(
   rule_set: Chess/Types/RuleSet,
@@ -986,15 +990,33 @@ def apply_move_legal(
   wc: Chess/Types/Controller,
   bc: Chess/Types/Controller,
   last_move: String,
+  last_white: String,
+  last_black: String,
   mv: Chess/Types/Move,
   legal: U32,
 ) -> Chess/Types/GameState:
   match legal:
     case 0:
-      (game{board, side, selected, targets, "Invalid move.", last_move, outcome, seed, wc, bc} :: Chess/Types/GameState)
+      (game{board, side, selected, targets, "Invalid move.", last_move, last_white, last_black, outcome, seed, wc, bc} :: Chess/Types/GameState)
     case _:
       board2 = board_after_move(board, mv)
       side2 = other_color(side)
       lm = move_to_string(mv)
-      state2 = (game{board2, side2, no_selection(), no_targets(), "Moved " ++ lm, lm, playing{}, seed + 1, wc, bc} :: Chess/Types/GameState)
+      last_white2 = next_last_white(side, lm, last_white)
+      last_black2 = next_last_black(side, lm, last_black)
+      state2 = (game{board2, side2, no_selection(), no_targets(), "Moved " ++ lm, lm, last_white2, last_black2, playing{}, seed + 1, wc, bc} :: Chess/Types/GameState)
       evaluate_outcome(rule_set, state2)
+
+def next_last_white(side: Chess/Types/Color, lm: String, prev: String) -> String:
+  match side:
+    case white{}:
+      lm
+    case black{}:
+      prev
+
+def next_last_black(side: Chess/Types/Color, lm: String, prev: String) -> String:
+  match side:
+    case white{}:
+      prev
+    case black{}:
+      lm
