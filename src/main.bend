@@ -113,24 +113,18 @@ def on_select_unlock(state: Chess/Types/RootState) -> Chess/Types/RootState:
     case root{screen, cursor, inv, rules, game, menu_status}:
       match screen:
         case queen_screen{}:
-          was_unlocked = Chess/Queens/is_unlocked(inv, cursor)
-          inv2 = Chess/Queens/buy(inv, cursor)
-          inv3 = Chess/Queens/select(inv2, cursor)
-          msg = select_unlock_message(was_unlocked, cursor)
-          root{queen_screen{}, cursor, inv3, Chess/Queens/resolve_rules(inv3), game, msg}
+          inv2 = Chess/Queens/select(inv, cursor)
+          msg = select_only_message(queen_id_eq(Chess/Queens/selected_queen(inv), cursor), cursor)
+          root{queen_screen{}, cursor, inv2, Chess/Queens/resolve_rules(inv2), game, msg}
         case scr:
           root{scr, cursor, inv, rules, game, menu_status}
 
-def select_unlock_message(was_unlocked: U32, qid: Chess/Types/QueenId) -> String:
-  name = Chess/Queens/queen_name(qid)
-  select_unlock_message_with_name(was_unlocked, name)
-
-def select_unlock_message_with_name(was_unlocked: U32, name: String) -> String:
-  match was_unlocked:
+def select_only_message(already_selected: U32, qid: Chess/Types/QueenId) -> String:
+  match already_selected:
     case 0:
-      "Unlocked and selected " ++ name ++ "."
+      "Selected " ++ Chess/Queens/queen_name(qid) ++ "."
     case _:
-      "Selected " ++ name ++ "."
+      Chess/Queens/queen_name(qid) ++ " already selected."
 
 def on_start_match(state: Chess/Types/RootState) -> Chess/Types/RootState:
   match state:
@@ -365,21 +359,37 @@ def render(state: Chess/Types/RootState) -> HTML(Event):
 def render_screen(state: Chess/Types/RootState) -> HTML(Event):
   match state:
     case root{screen, cursor, inv, rules, game, menu_status}:
-      match screen:
-        case menu_screen{}:
-          <section class="screen_root">{render_menu(inv)}</section>
-        case queen_screen{}:
-          <article class="screen_root">{render_queen_screen(cursor, inv)}</article>
-        case match_screen{}:
-          <main class="screen_root">{render_match(rules, game)}</main>
+      <div class="screen_stack">
+        {render_menu(inv, screen)}
+        {render_queen_screen(cursor, inv, screen)}
+        {render_match(rules, game, screen)}
+      </div>
 
-def render_menu(inv: Chess/Types/Inventory) -> HTML(Event):
+def render_menu(inv: Chess/Types/Inventory, screen: Chess/Types/Screen) -> HTML(Event):
   qid = Chess/Queens/selected_queen(inv)
   info = queen_wire_name(qid)
   details = queen_passive_text(qid)
-  render_menu_view(qid, info, details)
+  match is_menu_screen(screen):
+    case 0:
+      render_menu_view_hidden(qid, info, details)
+    case _:
+      render_menu_view_visible(qid, info, details)
 
-def render_menu_view(
+def render_menu_view_hidden(
+  qid: Chess/Types/QueenId,
+  info: String,
+  details: String,
+) -> HTML(Event):
+  <section class="menu_frame screen_hidden">
+    <div class="menu_kicker">{text{"SELECTED QUEEN"}}</div>
+    <div class="menu_title">{text{info}}</div>
+    <div class="menu_desc">{text{details}}</div>
+    <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
+    <button class="btn_primary" on_click={start{}}>{text{"PLAY"}}</button>
+    <button class="btn_link" on_click={open_queen{}}>{text{"change queen"}}</button>
+  </section>
+
+def render_menu_view_visible(
   qid: Chess/Types/QueenId,
   info: String,
   details: String,
@@ -396,16 +406,38 @@ def render_menu_view(
 def render_queen_screen(
   cursor: Chess/Types/QueenId,
   inv: Chess/Types/Inventory,
+  screen: Chess/Types/Screen,
 ) -> HTML(Event):
-  unlocked = Chess/Queens/is_unlocked(inv, cursor)
   selected = queen_id_eq(Chess/Queens/selected_queen(inv), cursor)
   info = queen_wire_name(cursor)
   details = queen_passive_text(cursor)
-  render_queen_screen_view(cursor, unlocked, selected, info, details)
+  match is_queen_screen(screen):
+    case 0:
+      render_queen_screen_view_hidden(cursor, selected, info, details)
+    case _:
+      render_queen_screen_view_visible(cursor, selected, info, details)
 
-def render_queen_screen_view(
+def render_queen_screen_view_hidden(
   cursor: Chess/Types/QueenId,
-  unlocked: U32,
+  selected: U32,
+  info: String,
+  details: String,
+) -> HTML(Event):
+  <section class="menu_frame screen_hidden">
+    <div class="menu_kicker">{text{"SELECT QUEEN"}}</div>
+    <div class="queen_nav">
+      <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
+      <div class="menu_title">{text{info}}</div>
+      <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
+    </div>
+    <div class="menu_desc">{text{details}}</div>
+    <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
+    {render_select_button(selected)}
+    <button class="btn_back" on_click={back_menu{}}>{text{"back"}}</button>
+  </section>
+
+def render_queen_screen_view_visible(
+  cursor: Chess/Types/QueenId,
   selected: U32,
   info: String,
   details: String,
@@ -419,36 +451,51 @@ def render_queen_screen_view(
     </div>
     <div class="menu_desc">{text{details}}</div>
     <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
-    {render_select_unlock_button(unlocked, selected)}
-    <button class="btn_link" on_click={back_menu{}}>{text{"back"}}</button>
+    {render_select_button(selected)}
+    <button class="btn_back" on_click={back_menu{}}>{text{"back"}}</button>
   </section>
 
-def render_select_unlock_button(unlocked: U32, selected: U32) -> HTML(Event):
-  render_select_unlock_button_selected(selected, unlocked)
-
-def render_select_unlock_button_selected(selected: U32, unlocked: U32) -> HTML(Event):
+def render_select_button(selected: U32) -> HTML(Event):
   match selected:
     case 0:
-      render_select_unlock_button_unlocked(unlocked)
+      render_select_button_label("SELECT")
     case _:
-      <button class="btn_selected" on_click={nop{}}>{text{"SELECTED"}}</button>
+      render_select_button_label("SELECTED")
 
-def render_select_unlock_button_unlocked(unlocked: U32) -> HTML(Event):
-  match unlocked:
-    case 0:
-      <button class="btn_primary" on_click={select_unlock{}}>{text{"UNLOCK"}}</button>
-    case _:
-      <button class="btn_primary" on_click={select_unlock{}}>{text{"SELECT"}}</button>
+def render_select_button_label(label: String) -> HTML(Event):
+  <button class="btn_primary" on_click={select_unlock{}}>{text{label}}</button>
 
 def render_match(
   rules: Chess/Types/RuleSet,
   game: Chess/Types/GameState,
+  screen: Chess/Types/Screen,
 ) -> HTML(Event):
   turn_line = match_turn_line(game)
   info_line = match_info_line(game)
-  render_match_view(rules, game, turn_line, info_line)
+  match is_match_screen(screen):
+    case 0:
+      render_match_view_hidden(rules, game, turn_line, info_line)
+    case _:
+      render_match_view_visible(rules, game, turn_line, info_line)
 
-def render_match_view(
+def render_match_view_hidden(
+  rules: Chess/Types/RuleSet,
+  game: Chess/Types/GameState,
+  turn_line: String,
+  info_line: String,
+) -> HTML(Event):
+  <section class="match_frame screen_hidden">
+    <div class="match_top">
+      <div class="match_turn">{text{turn_line}}</div>
+      <button class="btn_x" on_click={back_menu{}}>{text{"X"}}</button>
+    </div>
+    <div class="match_info">{text{info_line}}</div>
+    <div class="match_grid_wrap">
+      <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
+    </div>
+  </section>
+
+def render_match_view_visible(
   rules: Chess/Types/RuleSet,
   game: Chess/Types/GameState,
   turn_line: String,
@@ -476,6 +523,27 @@ def match_info_line(state: Chess/Types/GameState) -> String:
       "Last White: " ++ last_white
       ++ " | Last Black: " ++ last_black
       ++ " | Outcome: " ++ Chess/Engine/outcome_text(outcome)
+
+def is_menu_screen(screen: Chess/Types/Screen) -> U32:
+  match screen:
+    case menu_screen{}:
+      1
+    case _:
+      0
+
+def is_queen_screen(screen: Chess/Types/Screen) -> U32:
+  match screen:
+    case queen_screen{}:
+      1
+    case _:
+      0
+
+def is_match_screen(screen: Chess/Types/Screen) -> U32:
+  match screen:
+    case match_screen{}:
+      1
+    case _:
+      0
 
 def queen_wire_name(qid: Chess/Types/QueenId) -> String:
   match qid:
@@ -745,8 +813,9 @@ html{overflow-y:scroll}
 *{box-sizing:border-box;margin:0}
 body{min-height:100vh;overflow-x:hidden;padding:16px;background:#efefef;color:#111;font-family:Trebuchet MS,sans-serif}
 .page{min-height:calc(100vh - 32px);display:grid;place-items:center}
-.screen_root{width:100%;display:grid;place-items:center}
+.screen_stack{width:100%;display:grid;place-items:center}
 .menu_frame,.match_frame{width:min(92vw,560px);border:3px solid #111;padding:22px;display:grid;gap:14px;background:transparent}
+.screen_hidden{display:none !important}
 .menu_kicker{text-align:center;font-size:clamp(22px,4vw,40px);font-weight:800;letter-spacing:.06em}
 .menu_title{text-align:center;font-size:clamp(36px,7vw,64px);line-height:1;font-weight:900}
 .menu_desc{text-align:center;font-size:clamp(18px,2.8vw,30px);font-style:italic;min-height:40px;max-height:78px;overflow:hidden}
@@ -760,6 +829,7 @@ css_b : String = "
 .btn_primary,.btn_selected{width:min(100%,420px);height:64px;margin:0 auto;border:3px solid #111;background:#fff;font-size:clamp(30px,7vw,50px);font-weight:900;cursor:pointer}
 .btn_selected{color:#4c4c4c;cursor:default}
 .btn_link{border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,6vw,44px);color:#111;cursor:pointer}
+.btn_back{border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,6vw,44px);color:#111;cursor:pointer}
 "
 
 css_c : String = "

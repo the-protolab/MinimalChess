@@ -1,4 +1,4 @@
-# Queen catalog, unlock flow, and passive resolution.
+# Queen catalog and passive resolution.
 
 def default_queen() -> Chess/Types/QueenDef:
   queen_def{
@@ -39,7 +39,7 @@ def queen_name_from_def(qd: Chess/Types/QueenDef) -> String:
       name
 
 def initial_inventory() -> Chess/Types/Inventory:
-  inventory{queen_default{}, 1, 0, 0}
+  inventory{queen_default{}, 1, 1, 1}
 
 def is_unlocked(inv: Chess/Types/Inventory, id: Chess/Types/QueenId) -> U32:
   match inv:
@@ -64,11 +64,7 @@ def buy(inv: Chess/Types/Inventory, id: Chess/Types/QueenId) -> Chess/Types/Inve
           inventory{selected, d, p, 1}
 
 def select(inv: Chess/Types/Inventory, id: Chess/Types/QueenId) -> Chess/Types/Inventory:
-  match is_unlocked(inv, id):
-    case 0:
-      inv
-    case _:
-      select_unlocked(inv, id)
+  select_unlocked(inv, id)
 
 def select_unlocked(inv: Chess/Types/Inventory, id: Chess/Types/QueenId) -> Chess/Types/Inventory:
   match inv:
