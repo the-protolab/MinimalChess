@@ -19,6 +19,16 @@ bend src/main.bend --to-js --no-strict > /tmp/minimal_chess.js
 bend src/main.bend --to-web --no-strict > /tmp/minimal_chess.html
 ```
 
+## Web Preview (With Piece Assets)
+
+To preview the web build with chess-piece SVG files available, run:
+
+```sh
+./scripts/preview_web.sh
+```
+
+Then open `http://127.0.0.1:61424`.
+
 ## Engine Assertions
 
 ```sh

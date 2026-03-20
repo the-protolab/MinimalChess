@@ -58,7 +58,37 @@ def on_square_click_root(state: Chess/Types/RootState, row: U32, col: U32) -> Ch
           root{menu_screen{}, popup, inv, rules, game, "Press START MATCH to play."}
         case match_screen{}:
           game2 = on_square_click_game(rules, game, row, col)
-          root{match_screen{}, popup, inv, rules, game2, menu_status}
+          on_match_square_result(popup, inv, rules, game2, menu_status)
+
+def on_match_square_result(
+  popup: U32,
+  inv: Chess/Types/Inventory,
+  rules: Chess/Types/RuleSet,
+  state: Chess/Types/GameState,
+  menu_status: String,
+) -> Chess/Types/RootState:
+  match state:
+    case game{b2, s2, sel2, t2, st2, lm2, out2, sd2, wc2, bc2}:
+      on_match_square_result_outcome(popup, inv, rules, state, menu_status, out2)
+
+def on_match_square_result_outcome(
+  popup: U32,
+  inv: Chess/Types/Inventory,
+  rules: Chess/Types/RuleSet,
+  state: Chess/Types/GameState,
+  menu_status: String,
+  outcome: Chess/Types/Outcome,
+) -> Chess/Types/RootState:
+  match outcome:
+    case playing{}:
+      root{match_screen{}, popup, inv, rules, state, menu_status}
+    case _:
+      rules2 = Chess/Queens/resolve_rules(inv)
+      msg = post_match_menu_status_outcome(outcome)
+      root{menu_screen{}, 0, inv, rules2, state, msg}
+
+def post_match_menu_status_outcome(outcome: Chess/Types/Outcome) -> String:
+  "Match finished: " ++ Chess/Engine/outcome_text(outcome) ++ ". Pick a queen, then start a new match."
 
 def on_bot_tick_root(state: Chess/Types/RootState) -> Chess/Types/RootState:
   # Tick disabled to avoid UI click contention from continuous rerender.
@@ -377,7 +407,7 @@ def render_menu_popup(
       render_menu_open(info, menu_status, inv)
 
 def render_menu_closed(info: String, menu_status: String) -> HTML(Event):
-  <section class="shell_menu">
+  <section class="menu_root">
     <h1 class="title">Minimal Chess</h1>
     <div class="sub">Pre-match queen shop</div>
     <div class="status_menu">{text{info}}</div>
@@ -391,7 +421,7 @@ def render_menu_open(
   menu_status: String,
   inv: Chess/Types/Inventory,
 ) -> HTML(Event):
-  <section class="shell_menu">
+  <section class="menu_root">
     <h1 class="title">Minimal Chess</h1>
     <div class="sub">Pre-match queen shop</div>
     <div class="status_menu">{text{info}}</div>
@@ -444,14 +474,14 @@ def render_match(
   rules: Chess/Types/RuleSet,
   game: Chess/Types/GameState,
 ) -> HTML(Event):
-  <div>
-    <section class="shell">
+  <div class="match_root">
+    <section class="match_head">
       <h1 class="title">Minimal Chess</h1>
       <div class="status">{text{game_status_line(game, rules, inv)}}</div>
       <div><button class="secondary" on_click={back{}}>{text{"Back to Menu"}}</button></div>
       <div><button class="restart" on_click={restart{}}>{text{"Restart Match"}}</button></div>
     </section>
-    <section class="shell">
+    <section class="match_board">
       <div class="board">{...board_rows(game, rules, state_zero(game))}</div>
     </section>
   </div>
@@ -531,52 +561,132 @@ def render_cell(
   match state:
     case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
       cell = Chess/Engine/board_get(board, row, col)
-      label = cell_label(cell, is_selected(state, row, col), is_target(state, row, col), is_checked_king(state, rules, row, col))
+      sel = is_selected(state, row, col)
+      trg = is_target(state, row, col)
+      chk = is_checked_king(state, rules, row, col)
       dark = Chess/Engine/square_is_dark(row, col)
-      render_cell_dark(dark, row, col, label)
+      render_cell_dark(dark, row, col, cell, sel, trg, chk)
 
-def render_cell_dark(dark: U32, row: U32, col: U32, label: String) -> HTML(Event):
-  match dark:
-    case 0:
-      <button class="cell_light" on_click={square_click{row, col}}>{text{label}}</button>
-    case _:
-      <button class="cell_dark" on_click={square_click{row, col}}>{text{label}}</button>
-
-def cell_label(
+def render_cell_dark(
+  dark: U32,
+  row: U32,
+  col: U32,
   cell: Maybe(Chess/Types/Piece),
   selected: U32,
   target: U32,
   checked: U32,
-) -> String:
-  piece = Chess/Engine/piece_symbol(cell)
-  base = target_label(piece, cell, target)
-  base = mark_checked(base, checked)
-  mark_selected(base, selected)
-
-def target_label(piece: String, cell: Maybe(Chess/Types/Piece), target: U32) -> String:
-  match target:
+) -> HTML(Event):
+  match dark:
     case 0:
-      piece
+      <button class="cell_light" on_click={square_click{row, col}}>{render_cell_inner(cell, selected, target, checked)}</button>
     case _:
-      match Chess/Engine/cell_is_empty(cell):
-        case 0:
-          piece
-        case _:
-          "•"
+      <button class="cell_dark" on_click={square_click{row, col}}>{render_cell_inner(cell, selected, target, checked)}</button>
 
-def mark_checked(base: String, checked: U32) -> String:
-  match checked:
-    case 0:
-      base
-    case _:
-      "!" ++ base
+def render_cell_inner(
+  cell: Maybe(Chess/Types/Piece),
+  selected: U32,
+  target: U32,
+  checked: U32,
+) -> HTML(Event):
+  <div class="cell_inner">
+    {render_selected_overlay(selected)}
+    {render_checked_overlay(checked)}
+    {render_piece(cell)}
+    {render_target_overlay(cell, target)}
+  </div>
 
-def mark_selected(base: String, selected: U32) -> String:
+def render_selected_overlay(selected: U32) -> HTML(Event):
   match selected:
     case 0:
-      base
+      <span class="overlay_none">{text{""}}</span>
     case _:
-      "[" ++ base ++ "]"
+      <span class="cell_selected_ring">{text{""}}</span>
+
+def render_checked_overlay(checked: U32) -> HTML(Event):
+  match checked:
+    case 0:
+      <span class="overlay_none">{text{""}}</span>
+    case _:
+      <span class="cell_check_badge">{text{"!"}}</span>
+
+def render_target_overlay(cell: Maybe(Chess/Types/Piece), target: U32) -> HTML(Event):
+  empty = Chess/Engine/cell_is_empty(cell)
+  render_target_overlay_empty(empty, target)
+
+def render_target_overlay_empty(empty: U32, target: U32) -> HTML(Event):
+  match empty:
+    case 0:
+      <span class="overlay_none">{text{""}}</span>
+    case _:
+      render_target_overlay_target(target)
+
+def render_target_overlay_target(target: U32) -> HTML(Event):
+  match target:
+    case 0:
+      <span class="overlay_none">{text{""}}</span>
+    case _:
+      <span class="cell_target_dot">{text{"•"}}</span>
+
+def render_piece(cell: Maybe(Chess/Types/Piece)) -> HTML(Event):
+  match cell:
+    case none{}:
+      <span class="piece_empty">{text{""}}</span>
+    case some{piece{color, kind}}:
+      <img class="piece_img" src={piece_src_kind(color, kind)} alt={piece_alt_kind(color, kind)}></img>
+
+def piece_src_kind(color: Chess/Types/Color, kind: Chess/Types/PieceKind) -> String:
+  match color kind:
+    case white{} king{}:
+      "./assets/chess-pieces/whiteking.svg"
+    case white{} queen{}:
+      "./assets/chess-pieces/whitequeen.svg"
+    case white{} rook{}:
+      "./assets/chess-pieces/whiterook.svg"
+    case white{} bishop{}:
+      "./assets/chess-pieces/whitebishop.svg"
+    case white{} knight{}:
+      "./assets/chess-pieces/whiteknight.svg"
+    case white{} pawn{}:
+      "./assets/chess-pieces/whitepawn.svg"
+    case black{} king{}:
+      "./assets/chess-pieces/blackking.svg"
+    case black{} queen{}:
+      "./assets/chess-pieces/blackqueen.svg"
+    case black{} rook{}:
+      "./assets/chess-pieces/blackrook.svg"
+    case black{} bishop{}:
+      "./assets/chess-pieces/blackbishop.svg"
+    case black{} knight{}:
+      "./assets/chess-pieces/blackknight.svg"
+    case black{} pawn{}:
+      "./assets/chess-pieces/blackpawn.svg"
+
+def piece_alt_kind(color: Chess/Types/Color, kind: Chess/Types/PieceKind) -> String:
+  match color kind:
+    case white{} king{}:
+      "White king"
+    case white{} queen{}:
+      "White queen"
+    case white{} rook{}:
+      "White rook"
+    case white{} bishop{}:
+      "White bishop"
+    case white{} knight{}:
+      "White knight"
+    case white{} pawn{}:
+      "White pawn"
+    case black{} king{}:
+      "Black king"
+    case black{} queen{}:
+      "Black queen"
+    case black{} rook{}:
+      "Black rook"
+    case black{} bishop{}:
+      "Black bishop"
+    case black{} knight{}:
+      "Black knight"
+    case black{} pawn{}:
+      "Black pawn"
 
 def state_zero(state: Chess/Types/GameState) -> U32:
   match state:
@@ -633,6 +743,7 @@ def queen_passive_text(qid: Chess/Types/QueenId) -> String:
       "Pawn first move: only 1 square."
 
 css : String = "
+  html { overflow-y:scroll; }
   :root {
     --cell-light:#f0d9b5;
     --cell-dark:#b58863;
@@ -643,18 +754,27 @@ css : String = "
     --accent:#355070;
   }
   * { box-sizing:border-box; margin:0; }
-  body { min-height:100vh; background:linear-gradient(180deg,#ffe8cc,#f3ead9); color:var(--ink); font-family:Trebuchet MS, sans-serif; padding:12px; }
-  .page { display:flex; justify-content:center; }
-  .shell, .shell_menu { width:min(980px,100%); display:grid; gap:10px; background:var(--paper); border:2px solid #d7c19b; border-radius:16px; padding:12px; }
-  .shell_menu { width:min(760px,100%); }
+  body { min-height:100vh; background:linear-gradient(180deg,#ffe8cc,#f3ead9); color:var(--ink); font-family:Trebuchet MS, sans-serif; padding:12px; overflow-x:hidden; }
+  .page { width:100%; display:grid; justify-items:center; }
+  .menu_root { width:min(760px,100%); display:grid; gap:10px; }
+  .match_root { width:min(980px,100%); display:grid; gap:10px; }
+  .match_head, .match_board { width:100%; display:grid; gap:10px; }
   .title { font-size:clamp(24px,4vw,34px); line-height:1; }
   .sub { font-size:14px; color:#6f5a43; }
   .status, .status_menu { background:#fff2cf; border:1px solid #e4cd94; border-radius:8px; padding:8px; font-size:13px; }
-  .board { width:fit-content; display:inline-flex; flex-direction:column; gap:var(--cell-gap); background:#3f2d21; padding:4px; border-radius:10px; border:2px solid #63462f; }
+  .status { min-height:64px; max-height:64px; overflow:hidden; line-height:1.25; white-space:nowrap; text-overflow:ellipsis; }
+  .board { width:fit-content; display:inline-flex; flex-direction:column; gap:var(--cell-gap); }
   .board_row { display:flex; gap:var(--cell-gap); }
-  .cell_light, .cell_dark { width:var(--cell-size); height:var(--cell-size); border:none; cursor:pointer; font-size:clamp(20px,4vw,30px); display:grid; place-items:center; }
+  .cell_light, .cell_dark { width:var(--cell-size); height:var(--cell-size); border:none; cursor:pointer; display:grid; place-items:center; position:relative; overflow:hidden; padding:0; }
   .cell_light { background:var(--cell-light); }
   .cell_dark { background:var(--cell-dark); }
+  .cell_inner { width:100%; height:100%; display:grid; place-items:center; position:relative; }
+  .piece_empty { display:none; }
+  .piece_img { width:84%; height:84%; object-fit:contain; pointer-events:none; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
+  .cell_target_dot { position:absolute; inset:0; display:grid; place-items:center; font-size:clamp(20px,4vw,30px); color:#31586f; line-height:1; pointer-events:none; }
+  .overlay_none { display:none; }
+  .cell_selected_ring { position:absolute; inset:3px; border:3px solid #1f6fa5; border-radius:8px; pointer-events:none; }
+  .cell_check_badge { position:absolute; top:2px; right:2px; min-width:16px; height:16px; border-radius:999px; background:#b42318; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; pointer-events:none; }
   .shop { background:#fff4df; border:1px solid #ddc7a1; border-radius:10px; padding:8px; display:grid; gap:8px; }
   .shop_row { background:#fff8ed; border:1px solid #ddc7a1; border-radius:8px; padding:8px; display:grid; gap:6px; }
   .restart, .secondary, .qbtn_buy, .qbtn_select, .qbtn_selected { border:none; border-radius:10px; font-weight:700; padding:10px 14px; cursor:pointer; }
