@@ -62,6 +62,22 @@ def pawn_after_first_move_only_one() -> U32:
 def pawn_after_first_move_step_one() -> U32:
   Chess/Engine/piece_can_move(plus_rules_0(), board_after_a2_a3(), white_pawn_a3(), 5, 0, 4, 0)
 
+def plus_start_game() -> Chess/Types/GameState:
+  Chess/Engine/init_state_with_rules(plus_rules_0())
+
+def minus_start_game() -> Chess/Types/GameState:
+  Chess/Engine/init_state_with_rules(minus_rules_0())
+
+def plus_legal_a2_a5() -> U32:
+  mv = (move{pos{6, 0}, pos{3, 0}} :: Chess/Types/Move)
+  moves = Chess/Engine/legal_moves_from(plus_rules_0(), plus_start_game(), pos{6, 0})
+  Chess/Engine/move_in_list(mv, moves)
+
+def minus_legal_a2_a4() -> U32:
+  mv = (move{pos{6, 0}, pos{4, 0}} :: Chess/Types/Move)
+  moves = Chess/Engine/legal_moves_from(minus_rules_0(), minus_start_game(), pos{6, 0})
+  Chess/Engine/move_in_list(mv, moves)
+
 assert : U32
   Chess/Engine/square_is_dark(7, 0)
   == 1
@@ -105,3 +121,11 @@ assert : U32
 assert : U32
   pawn_after_first_move_step_one()
   == 1
+
+assert : U32
+  plus_legal_a2_a5()
+  == 1
+
+assert : U32
+  minus_legal_a2_a4()
+  == 0

@@ -146,7 +146,7 @@ def on_start_match(state: Chess/Types/RootState) -> Chess/Types/RootState:
           game2 = Chess/Engine/init_state_with_rules(rules2)
           qid = Chess/Queens/selected_queen(inv)
           qname = Chess/Queens/queen_name(qid)
-          game3 = Chess/Engine/set_status(game2, "Match started with " ++ qname ++ ".")
+          game3 = Chess/Engine/set_status(game2, "Match started with " ++ qname ++ ". " ++ active_rules_text(rules2))
           root{match_screen{}, 0, inv, rules2, game3, menu_status}
         case match_screen{}:
           root{match_screen{}, popup, inv, rules, game, menu_status}
@@ -447,7 +447,7 @@ def render_match(
   <div>
     <section class="shell">
       <h1 class="title">Minimal Chess</h1>
-      <div class="status">{text{game_status_line(game)}}</div>
+      <div class="status">{text{game_status_line(game, rules, inv)}}</div>
       <div><button class="secondary" on_click={back{}}>{text{"Back to Menu"}}</button></div>
       <div><button class="restart" on_click={restart{}}>{text{"Restart Match"}}</button></div>
     </section>
@@ -456,10 +456,24 @@ def render_match(
     </section>
   </div>
 
-def game_status_line(state: Chess/Types/GameState) -> String:
+def game_status_line(
+  state: Chess/Types/GameState,
+  rules: Chess/Types/RuleSet,
+  inv: Chess/Types/Inventory,
+) -> String:
   match state:
     case game{board, side, selected, targets, status, last_move, outcome, seed, wc, bc}:
-      "Turn: " ++ Chess/Engine/color_name(side) ++ " | Outcome: " ++ Chess/Engine/outcome_text(outcome) ++ " | Last: " ++ last_move ++ " | " ++ status
+      "Queen: " ++ Chess/Queens/queen_name(Chess/Queens/selected_queen(inv))
+      ++ " | " ++ active_rules_text(rules)
+      ++ " | Turn: " ++ Chess/Engine/color_name(side)
+      ++ " | Outcome: " ++ Chess/Engine/outcome_text(outcome)
+      ++ " | Last: " ++ last_move
+      ++ " | " ++ status
+
+def active_rules_text(rules: Chess/Types/RuleSet) -> String:
+  match rules:
+    case ruleset{player_max, opponent_max}:
+      "Pawn first move (you/bot): " ++ U32/show(player_max) ++ "/" ++ U32/show(opponent_max)
 
 def board_rows(
   state: Chess/Types/GameState,
