@@ -487,7 +487,7 @@ def render_match_view_hidden(
   <section class="match_frame screen_hidden">
     <div class="match_top">
       <div class="match_turn">{text{turn_line}}</div>
-      <button class="btn_x" on_click={back_menu{}}>{text{"X"}}</button>
+      <a class="btn_x" href="./">{text{"X"}}</a>
     </div>
     <div class="match_info">{text{info_line}}</div>
     <div class="match_grid_wrap">
@@ -504,7 +504,7 @@ def render_match_view_visible(
   <section class="match_frame">
     <div class="match_top">
       <div class="match_turn">{text{turn_line}}</div>
-      <button class="btn_x" on_click={back_menu{}}>{text{"X"}}</button>
+      <a class="btn_x" href="./">{text{"X"}}</a>
     </div>
     <div class="match_info">{text{info_line}}</div>
     {render_match_board_mount(game, rules)}
@@ -864,7 +864,7 @@ css_b : String = "
 css_c : String = "
 .match_top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .match_turn{font-size:clamp(26px,4.5vw,46px);font-weight:800;line-height:1}
-.btn_x{border:none;background:transparent;color:#111;font-size:clamp(34px,5.5vw,54px);font-weight:900;line-height:1;cursor:pointer;padding:0}
+.btn_x{border:none;background:transparent;color:#111;font-size:clamp(34px,5.5vw,54px);font-weight:900;line-height:1;cursor:pointer;padding:0;text-decoration:none;display:inline-block}
 .match_info{min-height:62px;max-height:62px;overflow:hidden;font-size:clamp(18px,2.8vw,30px);line-height:1.18}
 .match_grid_wrap{display:grid;justify-items:center}
 .board{display:inline-flex;flex-direction:column;gap:2px;width:fit-content}
