@@ -375,6 +375,13 @@ def render_menu(inv: Chess/Types/Inventory, screen: Chess/Types/Screen) -> HTML(
     case _:
       render_menu_view_visible(qid, info, details)
 
+def render_menu_title_row(info: String) -> HTML(Event):
+  <div class="queen_nav">
+    <span class="nav_spacer">{text{""}}</span>
+    <div class="menu_title">{text{info}}</div>
+    <span class="nav_spacer">{text{""}}</span>
+  </div>
+
 def render_menu_view_hidden(
   qid: Chess/Types/QueenId,
   info: String,
@@ -382,7 +389,7 @@ def render_menu_view_hidden(
 ) -> HTML(Event):
   <section class="menu_frame screen_hidden">
     <div class="menu_kicker">{text{"SELECTED QUEEN"}}</div>
-    <div class="menu_title">{text{info}}</div>
+    {render_menu_title_row(info)}
     <div class="menu_desc">{text{details}}</div>
     <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
     <button class="btn_primary" on_click={start{}}>{text{"PLAY"}}</button>
@@ -396,7 +403,7 @@ def render_menu_view_visible(
 ) -> HTML(Event):
   <section class="menu_frame">
     <div class="menu_kicker">{text{"SELECTED QUEEN"}}</div>
-    <div class="menu_title">{text{info}}</div>
+    {render_menu_title_row(info)}
     <div class="menu_desc">{text{details}}</div>
     <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
     <button class="btn_primary" on_click={start{}}>{text{"PLAY"}}</button>
@@ -838,38 +845,90 @@ def queen_passive_text(qid: Chess/Types/QueenId) -> String:
       "Pawn first move: only 1 square."
 
 css_a : String = "
-html{overflow-y:scroll}
+:root{
+  --app-pad:16px;
+  --card-width:min(92vw,560px);
+  --menu-card-height:min(90vh,760px);
+  --match-card-height:min(90vh,760px);
+  --card-border:3px solid #111;
+  --card-pad:22px;
+  --card-gap:12px;
+  --menu-kicker-row:48px;
+  --menu-title-row:72px;
+  --menu-desc-row:72px;
+  --menu-action-row:64px;
+  --menu-link-row:44px;
+  --match-top-row:56px;
+  --match-info-row:72px;
+  --board-gap:2px;
+  --board-max-size:calc(var(--card-width) - (2 * var(--card-pad)));
+  --queen-nav-size:52px;
+  --queen-nav-gap:8px;
+  --queen-stage-size:clamp(130px,30vh,220px);
+  --queen-piece-size:72%;
+}
+html{height:100%;overflow:hidden}
 *{box-sizing:border-box;margin:0}
-body{min-height:100vh;overflow-x:hidden;padding:16px;background:#efefef;color:#111;font-family:Trebuchet MS,sans-serif}
-.page{min-height:calc(100vh - 32px);display:grid;place-items:center}
+body{height:100%;overflow:hidden;background:#efefef;color:#111;font-family:Trebuchet MS,sans-serif}
+.page{height:100%;padding:var(--app-pad);display:grid;place-items:center}
 .screen_stack{width:100%;display:grid;place-items:center}
-.menu_frame,.match_frame{width:min(92vw,560px);border:3px solid #111;padding:22px;display:grid;gap:14px;background:transparent}
+.menu_frame{
+  width:var(--card-width);
+  height:var(--menu-card-height);
+  border:var(--card-border);
+  padding:var(--card-pad);
+  display:grid;
+  gap:var(--card-gap);
+  background:transparent;
+  overflow:hidden;
+  grid-template-rows:var(--menu-kicker-row) var(--menu-title-row) var(--menu-desc-row) minmax(0,1fr) var(--menu-action-row) var(--menu-link-row);
+}
+.match_frame{
+  width:var(--card-width);
+  height:var(--match-card-height);
+  border:var(--card-border);
+  padding:var(--card-pad);
+  display:grid;
+  gap:var(--card-gap);
+  background:transparent;
+  overflow:hidden;
+  grid-template-rows:var(--match-top-row) var(--match-info-row) minmax(0,1fr);
+}
 .screen_hidden{display:none !important}
-.menu_kicker{text-align:center;font-size:clamp(22px,4vw,40px);font-weight:800;letter-spacing:.06em}
-.menu_title{text-align:center;font-size:clamp(36px,7vw,64px);line-height:1;font-weight:900}
-.menu_desc{text-align:center;font-size:clamp(18px,2.8vw,30px);font-style:italic;min-height:40px;max-height:78px;overflow:hidden}
+.menu_kicker{height:100%;display:grid;place-items:center;text-align:center;font-size:clamp(22px,4vw,38px);font-weight:800;letter-spacing:.06em}
+.menu_title{text-align:center;font-size:clamp(32px,6vw,58px);line-height:1;font-weight:900}
+.menu_desc{height:100%;display:grid;place-items:center;text-align:center;font-size:clamp(18px,2.8vw,30px);font-style:italic;overflow:hidden}
 "
 
 css_b : String = "
-.queen_nav{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:8px}
-.btn_nav{width:52px;height:52px;border:2px solid #111;background:#fff;font-size:30px;line-height:1;cursor:pointer}
-.queen_sprite_box{width:min(70vw,250px);height:min(70vw,250px);margin:0 auto;border:3px solid #111;display:grid;place-items:center;background:#f8f8f8}
-.queen_sprite{width:84%;height:84%;object-fit:contain;pointer-events:none}
-.btn_primary,.btn_selected{width:min(100%,420px);height:64px;margin:0 auto;border:3px solid #111;background:#fff;font-size:clamp(30px,7vw,50px);font-weight:900;cursor:pointer}
+.queen_nav{height:100%;display:grid;grid-template-columns:var(--queen-nav-size) 1fr var(--queen-nav-size);align-items:center;gap:var(--queen-nav-gap)}
+.nav_spacer{width:var(--queen-nav-size);height:var(--queen-nav-size);display:block}
+.btn_nav{width:var(--queen-nav-size);height:var(--queen-nav-size);border:2px solid #111;background:#fff;font-size:30px;line-height:1;cursor:pointer}
+.queen_sprite_box{width:var(--queen-stage-size);height:var(--queen-stage-size);margin:0 auto;display:grid;place-items:center}
+.queen_sprite{width:var(--queen-piece-size);height:var(--queen-piece-size);max-width:100%;max-height:100%;object-fit:contain;pointer-events:none}
+.btn_primary,.btn_selected{width:min(100%,420px);height:100%;margin:0 auto;border:3px solid #111;background:#fff;font-size:clamp(28px,6vw,44px);font-weight:900;cursor:pointer}
 .btn_selected{color:#4c4c4c;cursor:default}
-.btn_link{border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,6vw,44px);color:#111;cursor:pointer}
-.btn_back{border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,6vw,44px);color:#111;cursor:pointer}
+.btn_link{height:100%;border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,5.2vw,38px);color:#111;cursor:pointer;display:grid;place-items:center}
+.btn_back{height:100%;border:none;background:transparent;width:fit-content;margin:0 auto;text-decoration:underline;font-size:clamp(24px,5.2vw,38px);color:#111;cursor:pointer;display:grid;place-items:center}
 "
 
 css_c : String = "
-.match_top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.match_turn{font-size:clamp(26px,4.5vw,46px);font-weight:800;line-height:1}
+.match_top{height:100%;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.match_turn{font-size:clamp(24px,4.2vw,40px);font-weight:800;line-height:1}
 .btn_x{border:none;background:transparent;color:#111;font-size:clamp(34px,5.5vw,54px);font-weight:900;line-height:1;cursor:pointer;padding:0;text-decoration:none;display:inline-block}
-.match_info{min-height:62px;max-height:62px;overflow:hidden;font-size:clamp(18px,2.8vw,30px);line-height:1.18}
-.match_grid_wrap{display:grid;justify-items:center}
-.board{display:inline-flex;flex-direction:column;gap:2px;width:fit-content}
-.board_row{display:flex;gap:2px}
-.cell_light,.cell_dark{width:clamp(40px,8vw,64px);height:clamp(40px,8vw,64px);border:none;cursor:pointer;display:grid;place-items:center;position:relative;overflow:hidden;padding:0}
+.match_info{height:100%;display:grid;align-content:center;overflow:hidden;font-size:clamp(16px,2.4vw,26px);line-height:1.18}
+.match_grid_wrap{width:100%;height:100%;min-height:0;display:grid;place-items:center;overflow:hidden}
+.board{
+  width:100%;
+  max-width:var(--board-max-size);
+  max-height:100%;
+  aspect-ratio:1/1;
+  display:grid;
+  grid-template-rows:repeat(8,minmax(0,1fr));
+  gap:var(--board-gap);
+}
+.board_row{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:var(--board-gap)}
+.cell_light,.cell_dark{width:100%;height:100%;border:none;cursor:pointer;display:grid;place-items:center;position:relative;overflow:hidden;padding:0}
 .cell_light{background:#efe5d3}
 .cell_dark{background:#bba27f}
 "
