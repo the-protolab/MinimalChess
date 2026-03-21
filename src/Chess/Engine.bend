@@ -892,6 +892,27 @@ def is_playing(outcome: Chess/Types/Outcome) -> U32:
 def evaluate_outcome(rule_set: Chess/Types/RuleSet, state: Chess/Types/GameState) -> Chess/Types/GameState:
   match state:
     case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      evaluate_outcome_king_present(rule_set, board, side, selected, targets, last_move, last_white, last_black, seed, wc, bc, find_king(board, side))
+
+def evaluate_outcome_king_present(
+  rule_set: Chess/Types/RuleSet,
+  board: List(Maybe(Chess/Types/Piece)),
+  side: Chess/Types/Color,
+  selected: Maybe(Chess/Types/Pos),
+  targets: List(Chess/Types/Move),
+  last_move: String,
+  last_white: String,
+  last_black: String,
+  seed: U32,
+  wc: Chess/Types/Controller,
+  bc: Chess/Types/Controller,
+  king_pos: Maybe(Chess/Types/Pos),
+) -> Chess/Types/GameState:
+  match king_pos:
+    case none{}:
+      winner = other_color(side)
+      game{board, side, selected, targets, "Checkmate. " ++ color_name(winner) ++ " wins.", last_move, last_white, last_black, checkmate{winner}, seed, wc, bc}
+    case some{_}:
       moves = legal_moves_for_board_side(rule_set, board, side)
       no_moves = list_is_empty(Chess/Types/Move, moves)
       check = is_in_check(board, side)

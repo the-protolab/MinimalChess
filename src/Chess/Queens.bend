@@ -10,14 +10,14 @@ def default_queen() -> Chess/Types/QueenDef:
 def plus_queen() -> Chess/Types/QueenDef:
   queen_def{
     queen_plus{},
-    "Queen+",
+    "Queen Triarch",
     pawn_first_move_max{target_player{}, 3},
   }
 
 def minus_queen() -> Chess/Types/QueenDef:
   queen_def{
     queen_minus{},
-    "Queen-",
+    "Queen Tempo",
     pawn_first_move_max{target_player{}, 1},
   }
 

@@ -385,7 +385,7 @@ def render_menu_title_row(info: String) -> HTML(Event):
 def render_queen_stage_nav(cursor: Chess/Types/QueenId) -> HTML(Event):
   <div class="queen_stage_nav">
     <button class="btn_nav" on_click={queen_prev{}}>{text{"<"}}</button>
-    <div class="queen_sprite_box">{render_queen_sprite(cursor)}</div>
+    <div class="queen_sprite_box" style={queen_sprite_box_style(cursor)}>{render_queen_sprite(cursor)}</div>
     <button class="btn_nav" on_click={queen_next{}}>{text{">"}}</button>
   </div>
 
@@ -395,15 +395,15 @@ def render_passive_block(details: String) -> HTML(Event):
     <div class="passive_text">{text{details}}</div>
   </div>
 
-def render_menu_actions() -> HTML(Event):
+def render_menu_actions(qid: Chess/Types/QueenId) -> HTML(Event):
   <div class="menu_actions">
-    <button class="btn_primary btn_play" on_click={start{}}>{text{"PLAY"}}</button>
+    <button class="btn_primary btn_play" style={queen_btn_style(qid)} on_click={start{}}>{text{"PLAY"}}</button>
     <button class="btn_link btn_change_queen" on_click={open_queen{}}>{text{"change queen"}}</button>
   </div>
 
-def render_queen_actions(selected: U32) -> HTML(Event):
+def render_queen_actions(selected: U32, cursor: Chess/Types/QueenId) -> HTML(Event):
   <div class="queen_actions">
-    {render_select_button(selected)}
+    {render_select_button(selected, cursor)}
     <button class="btn_link btn_change_queen" on_click={back_menu{}}>{text{"back"}}</button>
   </div>
 
@@ -415,9 +415,9 @@ def render_menu_view_hidden(
   <section class="menu_frame menu_frame_menu screen_hidden">
     <div class="menu_kicker">{text{"SELECTED QUEEN:"}}</div>
     {render_menu_title_row(info)}
-    <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
+    <div class="queen_sprite_box" style={queen_sprite_box_style(qid)}>{render_queen_sprite(qid)}</div>
     {render_passive_block(details)}
-    {render_menu_actions()}
+    {render_menu_actions(qid)}
   </section>
 
 def render_menu_view_visible(
@@ -428,9 +428,9 @@ def render_menu_view_visible(
   <section class="menu_frame menu_frame_menu">
     <div class="menu_kicker">{text{"SELECTED QUEEN:"}}</div>
     {render_menu_title_row(info)}
-    <div class="queen_sprite_box">{render_queen_sprite(qid)}</div>
+    <div class="queen_sprite_box" style={queen_sprite_box_style(qid)}>{render_queen_sprite(qid)}</div>
     {render_passive_block(details)}
-    {render_menu_actions()}
+    {render_menu_actions(qid)}
   </section>
 
 def render_queen_screen(
@@ -458,7 +458,7 @@ def render_queen_screen_view_hidden(
     {render_menu_title_row(info)}
     {render_queen_stage_nav(cursor)}
     {render_passive_block(details)}
-    {render_queen_actions(selected)}
+    {render_queen_actions(selected, cursor)}
   </section>
 
 def render_queen_screen_view_visible(
@@ -472,18 +472,18 @@ def render_queen_screen_view_visible(
     {render_menu_title_row(info)}
     {render_queen_stage_nav(cursor)}
     {render_passive_block(details)}
-    {render_queen_actions(selected)}
+    {render_queen_actions(selected, cursor)}
   </section>
 
-def render_select_button(selected: U32) -> HTML(Event):
+def render_select_button(selected: U32, cursor: Chess/Types/QueenId) -> HTML(Event):
   match selected:
     case 0:
-      render_select_button_label("SELECT", "btn_primary btn_play btn_select_available")
+      render_select_button_label("SELECT", "btn_primary btn_play btn_select_available", queen_btn_style(cursor))
     case _:
-      render_select_button_label("SELECTED", "btn_primary btn_play btn_select_current")
+      render_select_button_label("SELECTED", "btn_primary btn_play btn_select_current", "")
 
-def render_select_button_label(label: String, classes: String) -> HTML(Event):
-  <button class={classes} on_click={select_unlock{}}>{text{label}}</button>
+def render_select_button_label(label: String, classes: String, inline_style: String) -> HTML(Event):
+  <button class={classes} style={inline_style} on_click={select_unlock{}}>{text{label}}</button>
 
 def render_match(
   rules: Chess/Types/RuleSet,
@@ -652,9 +652,9 @@ def queen_wire_name(qid: Chess/Types/QueenId) -> String:
     case queen_default{}:
       "DEFAULT"
     case queen_plus{}:
-      "QUEEN +"
+      "QUEEN TRIARCH"
     case queen_minus{}:
-      "QUEEN -"
+      "QUEEN TEMPO"
 
 def render_queen_sprite(qid: Chess/Types/QueenId) -> HTML(Event):
   <img class="queen_sprite" src={queen_sprite_src(qid)} alt={queen_wire_name(qid)}></img>
@@ -664,9 +664,33 @@ def queen_sprite_src(qid: Chess/Types/QueenId) -> String:
     case queen_default{}:
       "./assets/chess-pieces/whitequeen.svg"
     case queen_plus{}:
-      "./assets/chess-pieces/blackqueen.svg"
+      "./assets/chess-pieces/queentriarch.svg"
     case queen_minus{}:
       "./assets/chess-pieces/whiteking.svg"
+
+def queen_bg_src(qid: Chess/Types/QueenId) -> String:
+  match qid:
+    case queen_default{}:
+      "./assets/bg-square.png"
+    case queen_plus{}:
+      "./assets/bg-square-purple.png"
+    case queen_minus{}:
+      "./assets/bg-square-C83A3A.png"
+
+def queen_accent_color(qid: Chess/Types/QueenId) -> String:
+  match qid:
+    case queen_default{}:
+      "#A4F28E"
+    case queen_plus{}:
+      "#E68FF3"
+    case queen_minus{}:
+      "#C83A3A"
+
+def queen_sprite_box_style(qid: Chess/Types/QueenId) -> String:
+  "background-image:url('" ++ queen_bg_src(qid) ++ "')"
+
+def queen_btn_style(qid: Chess/Types/QueenId) -> String:
+  "background:" ++ queen_accent_color(qid)
 
 def active_rules_text(rules: Chess/Types/RuleSet) -> String:
   match rules:
