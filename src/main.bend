@@ -1113,6 +1113,9 @@ css_g : String = "
   .match_close_mobile{display:none}
   .match_close_desktop{display:inline}
 }
+.btn_play,.btn_primary,.btn_selected,.btn_link,.btn_nav,.btn_x,.btn_change_queen,.match_outcome_ok{transition:transform .12s ease}
+.btn_play:hover,.btn_primary:hover,.btn_selected:hover,.btn_link:hover,.btn_nav:hover,.btn_x:hover,.btn_change_queen:hover,.match_outcome_ok:hover{transform:scale(1.05)}
+.cell_light:hover .piece_img,.cell_dark:hover .piece_img{transform:scale(1.12);transition:transform .1s ease}
 "
 
 css : String = css_a ++ css_b ++ css_c ++ css_d ++ css_e ++ css_f ++ css_g
