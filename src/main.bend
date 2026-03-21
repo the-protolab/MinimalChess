@@ -350,9 +350,14 @@ def select_message(p: Chess/Types/Pos, no_moves: U32) -> String:
 # Rendering
 # ---------
 
+def selected_qid(state: Chess/Types/RootState) -> Chess/Types/QueenId:
+  match state:
+    case root{screen, cursor, inv, rules, game, menu_status}:
+      Chess/Queens/selected_queen(inv)
+
 def render(state: Chess/Types/RootState) -> HTML(Event):
   <div class="page">
-    <style>{text{css}}</style>
+    <style>{text{css ++ queen_board_css(selected_qid(state))}}</style>
     {render_screen(state)}
   </div>
 
@@ -691,6 +696,18 @@ def queen_sprite_box_style(qid: Chess/Types/QueenId) -> String:
 
 def queen_btn_style(qid: Chess/Types/QueenId) -> String:
   "background:" ++ queen_accent_color(qid)
+
+def queen_dark_color(qid: Chess/Types/QueenId) -> String:
+  match qid:
+    case queen_default{}:
+      "#82B786"
+    case queen_plus{}:
+      "#C476CE"
+    case queen_minus{}:
+      "#964646"
+
+def queen_board_css(qid: Chess/Types/QueenId) -> String:
+  ".cell_light{background:" ++ queen_accent_color(qid) ++ "}" ++ ".cell_dark{background:" ++ queen_dark_color(qid) ++ "}" ++ "img.piece_img[alt='White queen']{content:url('" ++ queen_sprite_src(qid) ++ "')}"
 
 def active_rules_text(rules: Chess/Types/RuleSet) -> String:
   match rules:
