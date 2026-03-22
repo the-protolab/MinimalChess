@@ -29,6 +29,14 @@ To preview the web build with chess-piece SVG files available, run:
 
 Then open `http://127.0.0.1:61424`.
 
+## GitHub Pages / Deploy Build
+
+The deployed site is served from `docs/`, so rebuild that directory before pushing deploy changes:
+
+```sh
+./scripts/build_docs.sh
+```
+
 ## Engine Assertions
 
 ```sh
