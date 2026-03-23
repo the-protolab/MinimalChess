@@ -31,8 +31,18 @@ def piece_or_white_pawn(cell: Maybe(Chess/Types/Piece)) -> Chess/Types/Piece:
     case some{p}:
       p
 
+def piece_or_black_pawn(cell: Maybe(Chess/Types/Piece)) -> Chess/Types/Piece:
+  match cell:
+    case none{}:
+      piece{black{}, pawn{}}
+    case some{p}:
+      p
+
 def white_pawn_a2() -> Chess/Types/Piece:
   piece_or_white_pawn(Chess/Engine/board_get(init_board_0(), 6, 0))
+
+def black_pawn_a7() -> Chess/Types/Piece:
+  piece_or_black_pawn(Chess/Engine/board_get(init_board_0(), 1, 0))
 
 def board_after_a2_a3() -> List(Maybe(Chess/Types/Piece)):
   mv = (move{pos{6, 0}, pos{5, 0}} :: Chess/Types/Move)
@@ -53,8 +63,14 @@ def pawn_default_step_three() -> U32:
 def pawn_plus_step_three() -> U32:
   Chess/Engine/piece_can_move(plus_rules_0(), init_board_0(), white_pawn_a2(), 6, 0, 3, 0)
 
-def pawn_minus_step_two() -> U32:
+def pawn_minus_white_step_two() -> U32:
   Chess/Engine/piece_can_move(minus_rules_0(), init_board_0(), white_pawn_a2(), 6, 0, 4, 0)
+
+def pawn_minus_black_step_two() -> U32:
+  Chess/Engine/piece_can_move(minus_rules_0(), init_board_0(), black_pawn_a7(), 1, 0, 3, 0)
+
+def pawn_minus_black_step_one() -> U32:
+  Chess/Engine/piece_can_move(minus_rules_0(), init_board_0(), black_pawn_a7(), 1, 0, 2, 0)
 
 def pawn_after_first_move_only_one() -> U32:
   Chess/Engine/piece_can_move(plus_rules_0(), board_after_a2_a3(), white_pawn_a3(), 5, 0, 3, 0)
@@ -68,6 +84,14 @@ def plus_start_game() -> Chess/Types/GameState:
 def minus_start_game() -> Chess/Types/GameState:
   Chess/Engine/init_state_with_rules(minus_rules_0())
 
+def minus_start_game_black_turn_state(state: Chess/Types/GameState) -> Chess/Types/GameState:
+  match state:
+    case game{board, side, selected, targets, status, last_move, last_white, last_black, outcome, seed, wc, bc}:
+      game{board, black{}, selected, targets, "Black to move.", last_move, last_white, last_black, outcome, seed, wc, bc}
+
+def minus_start_game_black_turn() -> Chess/Types/GameState:
+  minus_start_game_black_turn_state(minus_start_game())
+
 def plus_legal_a2_a5() -> U32:
   mv = (move{pos{6, 0}, pos{3, 0}} :: Chess/Types/Move)
   moves = Chess/Engine/legal_moves_from(plus_rules_0(), plus_start_game(), pos{6, 0})
@@ -76,6 +100,16 @@ def plus_legal_a2_a5() -> U32:
 def minus_legal_a2_a4() -> U32:
   mv = (move{pos{6, 0}, pos{4, 0}} :: Chess/Types/Move)
   moves = Chess/Engine/legal_moves_from(minus_rules_0(), minus_start_game(), pos{6, 0})
+  Chess/Engine/move_in_list(mv, moves)
+
+def minus_legal_a7_a5() -> U32:
+  mv = (move{pos{1, 0}, pos{3, 0}} :: Chess/Types/Move)
+  moves = Chess/Engine/legal_moves_from(minus_rules_0(), minus_start_game_black_turn(), pos{1, 0})
+  Chess/Engine/move_in_list(mv, moves)
+
+def minus_legal_a7_a6() -> U32:
+  mv = (move{pos{1, 0}, pos{2, 0}} :: Chess/Types/Move)
+  moves = Chess/Engine/legal_moves_from(minus_rules_0(), minus_start_game_black_turn(), pos{1, 0})
   Chess/Engine/move_in_list(mv, moves)
 
 def empty_board_i(i: U32) -> List(Maybe(Chess/Types/Piece)):
@@ -153,8 +187,16 @@ assert : U32
   == 1
 
 assert : U32
-  pawn_minus_step_two()
+  pawn_minus_white_step_two()
+  == 1
+
+assert : U32
+  pawn_minus_black_step_two()
   == 0
+
+assert : U32
+  pawn_minus_black_step_one()
+  == 1
 
 assert : U32
   pawn_after_first_move_only_one()
@@ -170,7 +212,15 @@ assert : U32
 
 assert : U32
   minus_legal_a2_a4()
+  == 1
+
+assert : U32
+  minus_legal_a7_a5()
   == 0
+
+assert : U32
+  minus_legal_a7_a6()
+  == 1
 
 assert : U32
   white_king_missing_outcome_live()

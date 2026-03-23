@@ -18,7 +18,7 @@ def minus_queen() -> Chess/Types/QueenDef:
   queen_def{
     queen_minus{},
     "Queen Tempo",
-    pawn_first_move_max{target_player{}, 1},
+    pawn_first_move_max{target_opponent{}, 1},
   }
 
 def queen_of_id(id: Chess/Types/QueenId) -> Chess/Types/QueenDef:

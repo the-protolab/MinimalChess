@@ -431,7 +431,7 @@ def render_menu_view_visible(
   details: String,
 ) -> HTML(Event):
   <section class="menu_frame menu_frame_menu">
-    <div class="menu_kicker">{text{"SELECTED QUEEN:"}}</div>
+    <div class="menu_kicker">{text{" "}}</div>
     {render_menu_title_row(info)}
     <div class="queen_sprite_box" style={queen_sprite_box_style(qid)}>{render_queen_sprite(qid)}</div>
     {render_passive_block(details)}
@@ -459,7 +459,7 @@ def render_queen_screen_view_hidden(
   details: String,
 ) -> HTML(Event):
   <section class="menu_frame screen_hidden">
-    <div class="menu_kicker">{text{"QUEEN"}}</div>
+    <div class="menu_kicker">{text{" "}}</div>
     {render_menu_title_row(info)}
     {render_queen_stage_nav(cursor)}
     {render_passive_block(details)}
@@ -473,7 +473,7 @@ def render_queen_screen_view_visible(
   details: String,
 ) -> HTML(Event):
   <section class="menu_frame">
-    <div class="menu_kicker">{text{"QUEEN"}}</div>
+    <div class="menu_kicker">{text{" "}}</div>
     {render_menu_title_row(info)}
     {render_queen_stage_nav(cursor)}
     {render_passive_block(details)}
@@ -655,9 +655,9 @@ def is_match_screen(screen: Chess/Types/Screen) -> U32:
 def queen_wire_name(qid: Chess/Types/QueenId) -> String:
   match qid:
     case queen_default{}:
-      "DEFAULT"
+      "CLASSIC QUEEN"
     case queen_plus{}:
-      "QUEEN TRIARCH"
+      "TRIARCH QUEEN"
     case queen_minus{}:
       "QUEEN TEMPO"
 
@@ -671,7 +671,7 @@ def queen_sprite_src(qid: Chess/Types/QueenId) -> String:
     case queen_plus{}:
       "./assets/chess-pieces/queentriarch.svg"
     case queen_minus{}:
-      "./assets/chess-pieces/whiteking.svg"
+      "./assets/chess-pieces/queentempo.svg"
 
 def queen_bg_src(qid: Chess/Types/QueenId) -> String:
   match qid:
@@ -945,11 +945,11 @@ def queen_id_eq(a: Chess/Types/QueenId, b: Chess/Types/QueenId) -> U32:
 def queen_passive_text(qid: Chess/Types/QueenId) -> String:
   match qid:
     case queen_default{}:
-      "Pawn first move: up to 2 squares."
+      "This piece has no passive ability."
     case queen_plus{}:
-      "Pawn first move: up to 3 squares."
+      "Pawns can move up to 3 squares on their first move."
     case queen_minus{}:
-      "Pawn first move: only 1 square."
+      "Restricts opponent pawns to moving only 1 square."
 
 css_a : String = "
 @import url('https://fonts.googleapis.com/css2?family=Gasoek+One&family=Poppins:wght@500;800;900&display=swap');
